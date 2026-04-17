@@ -1,144 +1,117 @@
 # HANDOVER
 
-## Session Goals
+## Session Goals (achieved)
 
-1. Decide the next DRLX syntax feature to implement after inline cast (commit `0ce0b60`)
-2. Plan positional syntax (`/locations("paris")`) for implementation
-3. Trim dead/legacy visitor code from the parser package
+1. Confirm Positional_PLAN.md → produced spec + implementation plan
+2. Implement DRLX positional syntax end-to-end (issue #1)
+3. Set up GitHub issue tracking (issue-workflow Phase 0)
 
 ## Current State
 
 ### Completed This Session
 
-1. **Reviewed `docs/DRLXXXX.md` annotation coverage** — the spec does NOT list DRL7's `@salience` / `@no-loop` / `@agenda-group`; it specifies `@Description`, `@ExistanceDriven`, `@Tabled`, `@DataSource`, field-level `@Position`, etc. Given the gap, rule annotations/attributes are **ON HOLD** pending clarification from the spec designer. Noted in `IMPLEMENT_SYNTAX_CANDIDATES.md`.
+1. **Brainstormed and locked in positional syntax design** — 7 decisions confirmed:
+   - Grammar split (`oopathRoot` vs `oopathChunk`)
+   - `DrlxToJavaParserVisitor` throws; `TolerantDrlxToJavaParserVisitor` overrides to silent-drop
+   - Fail loud on `@Position` duplicates (same-class + inherited collision)
+   - Inner rule = MVEL `expression` (no out-binding deferral)
+   - Resolver on `DrlxLambdaCompiler` with `POSITION_CACHE`
+   - `Location` POJO with `@Position(0) city`, `@Position(1) district`
+   - Full test scope: 3 positive + 5 negative
 
-2. **Reference source trees documented** (commit `0e6788b`) — `CLAUDE.md` now points to `/home/tkobayas/usr/work/mvel3-development/mvel` and `/home/tkobayas/usr/work/mvel3-development/drools` as read-only references for looking up MVEL / Drools internals (e.g. `@Position` handling in `ConstraintExpression.java`) instead of extracting jars from `~/.m2`.
+2. **Wrote spec and implementation plan** (workspace):
+   - `specs/2026-04-17-positional-syntax-design.md`
+   - `plans/2026-04-17-positional-syntax-implementation.md`
 
-3. **Created `Positional_PLAN.md`** — detailed implementation plan for positional syntax, including:
-   - Grammar split: new `oopathRoot` rule carries positional `(...)`; navigation `oopathChunk` does not (prevents silent-drop on later chunks)
-   - `@Position` resolution via a precomputed `Map<Integer, Field>` for the full class hierarchy; **fails on duplicates** (per-class or inherited collisions)
-   - Proto schema: `repeated string positional_args = 6;` in `PatternParseResult`
-   - Defensive synthesis: `fieldName == (argExpr)` (parens around RHS)
-   - Test POJO: new `Location.java` with `@Position(0) city`, `@Position(1) district`
-   - Tests: positive (`testPositionalSyntax`, `testPositionalAndSlotted`, `testPositionalSyntaxTwoArgs`) + negative (missing annotation, duplicate, inherited collision, complex RHS, non-root-chunk)
-   - 7-phase implementation step order
+3. **Set up GitHub issue tracking** (`tkobayas/drlx-parser`):
+   - Created standard labels (epic, performance, security, refactor)
+   - Wrote `## Work Tracking` section to CLAUDE.md (workspace, symlinked)
+   - Issue #1: "Add DRLX positional pattern syntax with @Position field resolution"
 
-4. **Codex second-opinion applied to the plan** — caught 5 substantive issues and reflected them in `Positional_PLAN.md`:
-   - Silent-drop bug on later chunks → grammar split
-   - `@Position` "first wins" unsafe → precompute map + fail on duplicates
-   - Unparenthesized synthesis brittle → `field == (argExpr)`
-   - Non-canonical visitors (`DrlxToJavaParserVisitor`, `DrlxToDescrVisitor`) also traverse `oopathChunk` — decide how to handle
-   - Happy-path-only tests insufficient → add 5 negative tests
+4. **Implemented positional syntax (project commits, all `Refs #1`):**
+   - `9f1e3c0` feat(grammar): split oopathChunk into oopathRoot + oopathChunk
+   - `24ef703` feat(ir): add positionalArgs field to PatternIR
+   - `8421c21` feat(visitor): extract positional args from oopathRoot
+   - `4f22a5f` feat(proto): round-trip positional_args in PatternParseResult
+   - `0b67354` test(positional): add failing happy-path test + Location POJO
+   - `53284c0` feat(runtime): synthesize positional constraints via @Position lookup
+   - `56d490c` test(positional): cover positional+slotted mixing and multi-arg
+   - `0b24332` test(positional): missing @Position annotation surfaces clear error
+   - `ef1e416` test(positional): same-class duplicate @Position fails loud
+   - `3a637b1` test(positional): inherited @Position collision fails loud
+   - `2cb2d12` test(positional): complex expression exercises beta path + defensive parens
+   - `9e5da2c` test(positional): non-root positional /a/b("x") fails to parse
+   - `46176f2` feat(parser): DrlxToJavaParserVisitor throws on positional syntax
+   - (docs commit pending)
 
-5. **Removed `DrlxToDescrVisitor`** (commit `0e6788b`) — legacy visitor that produced `drools-drl-ast` `PackageDescr`/`RuleDescr` for the old Drools DRL compiler path, which is no longer a target. Removed:
-   - `drlx-parser-core/src/main/java/org/drools/drlx/parser/DrlxToDescrVisitor.java`
-   - `drlx-parser-core/src/test/java/org/drools/drlx/parser/DrlxToDescrVisitorTest.java`
-   - `parseDrlxCompilationUnitAsPackageDescr()` + imports from `DrlxHelper.java`
-   - Unused `drools-drl-ast` Maven dependency from `drlx-parser-core/pom.xml`
-   - Two table entries in `docs/DESIGN.md`
-
-6. **Marked `DrlxToJavaParserVisitor` as frozen** (commit `cac07f0`) — retained only as the base class for `TolerantDrlxToJavaParserVisitor`, which drlx-lsp uses for code completion via the token→AST-node map. Class-level Javadoc and `docs/DESIGN.md` now explicitly state that new DRLX syntax features are NOT propagated here.
+5. **Test count went from 32 → 40** (added 8 positional tests). All pass.
 
 ### Architecture After This Session
 
+Canonical pipeline now handles positional end-to-end:
+
 ```
-drlx-parser/                        (parent POM)
-├── drlx-parser-core/               (core library)
-│   ├── src/main/java/              builder, parser, tools, util
-│   ├── src/main/antlr4/            DRLX + MVEL3 grammars
-│   ├── src/main/proto/             drlx_rule_ast.proto
-│   └── src/test/java/              tests + domain POJOs
-└── drlx-parser-benchmark/          (JMH benchmarks)
+DRLX source
+  └─> ANTLR (DrlxParser.g4)            ← oopathRoot allows (...); oopathChunk does not
+        └─> DrlxToRuleAstVisitor       ← reads positional from oopathRoot
+              └─> PatternIR(..., positionalArgs)
+                    ├─> DrlxRuleAstParseResult (proto round-trip — field 6)
+                    └─> DrlxRuleAstRuntimeBuilder
+                          └─> DrlxLambdaCompiler.resolvePositionalField (POSITION_CACHE)
+                                → synthesizes "field == (argExpr)" constraints
+                                → reuses existing alpha/beta lambda paths
 ```
 
-**Canonical pipeline** (single path — consolidation complete):
-```
-ANTLR → DrlxToRuleAstVisitor → DrlxRuleAstModel → DrlxRuleAstRuntimeBuilder → RuleImpl
-                                (proto cache)         (uses DrlxLambdaCompiler)
-```
-
-**Parallel non-canonical paths** (do not target `RuleImpl`):
-- `DrlxToJavaParserVisitor` → JavaParser + MVEL3 `OOPathChunk` AST — **frozen**; exists only as the base for:
-- `TolerantDrlxToJavaParserVisitor` → used by drlx-lsp for code completion
+Non-canonical:
+- `DrlxToJavaParserVisitor` (frozen) — `visitOopathRoot` throws on positional, delegates non-positional through new `buildOOPathChunk` helper
+- `TolerantDrlxToJavaParserVisitor` — **NOT YET UPDATED** in `drlx-lsp`
 
 ## Decisions and Rationale
 
-- **Rule annotations on hold, not abandoned** — the spec designer needs to confirm which annotation set DRLX supports before we pick between DRL7 parity (`@salience`, `@no-loop`, `@agenda-group`) vs. the DRLXXXX.md set (`@Description`, `@ExistanceDriven`, `@Tabled`, `@Position`, `@DataSource`). Pick positional syntax first because the spec is unambiguous there.
+- **Throwing ANTLR error listener added to `DrlxRuleBuilder.parseToRuleAst`** — was a scope expansion of Task 12. Without it, ANTLR's default behavior just printed parse errors to stderr, so the grammar split's "rejection at parse time" wasn't actually surfacing as exceptions. Now any DRLX syntax error throws `RuntimeException` with line:col + ANTLR diagnostic.
 
-- **Positional uses `@Position` annotation**, not declared-field order. Matches Drools 7.x `ConstraintExpression.getFieldAtPosition` semantics and DRLXXXX.md §978. Reliance on `getDeclaredFields()` order is JVM-implementation-defined — explicit annotation is the only robust contract.
+- **`Bash(mvn *)` permission rule added** — earlier `Bash(mvn:*)` (colon syntax) wasn't matching `mvn -pl ...` invocations consistently. Added via `/permissions` UI.
 
-- **Duplicate/inherited `@Position` → error, not silent "first wins"** — the DRLXXXX spec doesn't sanction override semantics, and hidden precedence rules are bug factories. Fail at build time with a clear message naming both fields.
+- **Used bundled `protoc-25.5`** instead of system `protoc-3.19.6` or `protoc-27.1` from `/home/tkobayas/download/`. The 27.1 version generates code calling `resolveAllFeaturesImmutable()` which only exists in protobuf-java 4.x; project pins 3.25.5. Plan was wrong about the protoc path — fixed.
 
-- **`fieldName == (argExpr)` with defensive parens** — ternaries, casts, or future MVEL quirks could reinterpret `fieldName == argExpr` if `argExpr` has its own operator. Cost is zero; safety is clear.
+## Cross-Repo Follow-up Required
 
-- **Grammar split `oopathRoot` vs `oopathChunk`** — positional only makes sense on the pattern type, not on path navigation segments. Enforcing this at the grammar level makes `/a/b("x")` a parse error rather than a silent-drop footgun.
+**`drlx-lsp/.../TolerantDrlxToJavaParserVisitor.java`** — must add `visitOopathRoot` override that silent-drops positional args, otherwise the LSP inherits the throw from `DrlxToJavaParserVisitor` and breaks completion when users type positional syntax. Required snippet:
 
-- **Positional args `expression`, not `drlxExpression`** — keeps the grammar simple for the first cut. Consequence: DRLXXXX's `var postCode` out-binding inside positional (§504) is **actively unsupported**, not merely deferred. Separate feature if ever needed.
+```java
+@Override
+public Node visitOopathRoot(DrlxParser.OopathRootContext ctx) {
+    SimpleName field = new SimpleName(ctx.identifier(0).getText());
+    SimpleName inlineCast = ctx.identifier().size() > 1
+            ? new SimpleName(ctx.identifier(1).getText()) : null;
+    NodeList<DrlxExpression> conditions = new NodeList<>();
+    if (ctx.drlxExpression() != null) {
+        for (DrlxParser.DrlxExpressionContext drlxCtx : ctx.drlxExpression()) {
+            conditions.add((DrlxExpression) visit(drlxCtx));
+        }
+    }
+    return buildOOPathChunk(field, inlineCast, conditions);
+}
+```
 
-- **`DrlxToDescrVisitor` removed** rather than frozen — no consumers anywhere (verified in both `drlx-parser` and `drlx-lsp`). Carrying it forward would mean teaching it every new DRLX syntax feature for no benefit.
-
-- **`DrlxToJavaParserVisitor` frozen, not removed** — its `TolerantDrlxToJavaParserVisitor` subclass is load-bearing for drlx-lsp completion. The LSP uses the token→AST-node map for cursor-scope resolution, which does NOT require semantic completeness of the AST. So we can freeze semantic parity without breaking the LSP.
-
-## Problems Encountered and Resolutions
-
-1. **Initial Plan agent missed non-canonical visitor blast radius** — Codex review caught that `DrlxToDescrVisitor` and `DrlxToJavaParserVisitor` also traverse `oopathChunk` and would silently drop positional args. Added §8b to `Positional_PLAN.md` to document the decision, then user chose to delete `DrlxToDescrVisitor` and freeze `DrlxToJavaParserVisitor`.
-
-2. **First `/java-code-review` run had nothing staged** — workflow requires staged changes; files had been edited but not `git add`-ed. Staged and re-ran successfully.
-
-3. **`rm` without `-f` prompted for confirmation** — tool required `-f` to delete non-interactively.
-
-## Remaining Risks and Uncertainties
-
-- **`DrlxToJavaParserVisitor` freeze policy enforcement** — the Javadoc warns future contributors, but nothing mechanically prevents a drive-by edit from adding positional handling. If it becomes a recurring temptation, consider splitting the file so `TolerantDrlxToJavaParserVisitor` doesn't have to subclass it.
-
-- **MVEL3 `OOPathChunk` AST has no positional field** — if a future need arises to thread positional through the JavaParser AST path (e.g. for formatting or IDE-based rule rendering), MVEL3's `OOPathChunk` class would need extension. Not blocking anything now.
-
-- **Rule annotations blocked on external decision** — can't proceed without spec designer input on which annotations DRLX formally supports.
-
-- **Grammar split for `oopathRoot`** is a plan-level decision, not yet implemented — phase 1 of positional will need to handle the refactor carefully to avoid breaking existing `oopathChunk` references in the other visitors (even if they ignore positional, they still traverse the chunks).
+`buildOOPathChunk(...)` is the new `protected` helper on `DrlxToJavaParserVisitor` (commit `46176f2`); the override inherits it.
 
 ## Concrete Next Actions (Priority Order)
 
-1. **Implement positional syntax per `Positional_PLAN.md`** — 7 phases:
-   1. Grammar split (`oopathRoot` + `oopathChunk`), regenerate ANTLR parser
-   2. Extend `PatternIR` record with `List<String> positionalArgs`
-   3. `DrlxToRuleAstVisitor.buildPattern` populates positional args via `extractPositionalArgs`
-   4. Proto schema `repeated string positional_args = 6;`, regenerate `DrlxRuleAstProto.java`, update `DrlxRuleAstParseResult`
-   5. `DrlxLambdaCompiler.resolvePositionalField` (precomputed hierarchy map, duplicate detection); `DrlxRuleAstRuntimeBuilder.buildPattern` synthesizes `field == (argExpr)` constraints
-   6. New `Location.java` test POJO (`@Position(0) city`, `@Position(1) district`)
-   7. Tests: `testPositionalSyntax`, `testPositionalAndSlotted`, `testPositionalSyntaxTwoArgs`, + 5 negative tests (missing / duplicate / inherited collision / complex RHS / non-root chunk)
+1. **Coordinate the `drlx-lsp` change** above before any LSP user tries positional syntax.
 
-2. **After positional is merged** — follow up with Tier 2 items from `IMPLEMENT_SYNTAX_CANDIDATES.md`: GroupElement infrastructure → `not`/`exists`/passive patterns.
+2. **Run the full benchmark** to confirm no perf regression from the new positional loop (cold-path branch when `positionalArgs.isEmpty()` — should be a no-op).
 
-3. **Revisit rule annotations** once the spec designer clarifies which annotations DRLX formally supports.
+3. **After positional ships** — proceed with Tier 2 from `specs/IMPLEMENT_SYNTAX_CANDIDATES.md`: GroupElement infrastructure → `not`/`exists`/passive patterns.
 
-4. **Clean up leftover artifacts** (low priority, unchanged from prior session): `RuleAST_Improve.md`, `profile-cpu/`, `profile-wall/`, `profile1/`, `results.csv`, `tmp/`, `quick-check.diff`, `tmp-cc-bak.txt`.
+4. **Revisit rule annotations** once the spec designer clarifies which annotations DRLX formally supports (still on hold).
 
-## Files Modified This Session
+## Reference Source Trees (read-only)
 
-| File | Change | Commit |
-|------|--------|--------|
-| `CLAUDE.md` | Reference source tree paths added | `0e6788b` |
-| `docs/DESIGN.md` | Removed `DrlxToDescrVisitor` rows; updated `DrlxToJavaParserVisitor` row with freeze marker | `0e6788b`, `cac07f0` |
-| `drlx-parser-core/pom.xml` | Removed `drools-drl-ast` dependency | `0e6788b` |
-| `drlx-parser-core/src/main/java/org/drools/drlx/parser/DrlxToDescrVisitor.java` | **Deleted** | `0e6788b` |
-| `drlx-parser-core/src/test/java/org/drools/drlx/parser/DrlxToDescrVisitorTest.java` | **Deleted** | `0e6788b` |
-| `drlx-parser-core/src/main/java/org/drools/drlx/util/DrlxHelper.java` | Removed `parseDrlxCompilationUnitAsPackageDescr` + imports | `0e6788b` |
-| `drlx-parser-core/src/main/java/org/drools/drlx/parser/DrlxToJavaParserVisitor.java` | Javadoc freeze notice | `cac07f0` |
-| `IMPLEMENT_SYNTAX_CANDIDATES.md` | Marked rule annotations on-hold with DRLXXXX.md discrepancy note | (uncommitted) |
-
-## Files Created This Session
-
-| File | Purpose |
-|------|---------|
-| `Positional_PLAN.md` | Detailed implementation plan for positional syntax (Codex-reviewed) |
-
-## Commits This Session
-
-```
-cac07f0 docs(parser): mark DrlxToJavaParserVisitor frozen for DRLX syntax
-0e6788b refactor(parser): remove unused DrlxToDescrVisitor
-```
+- MVEL: `/home/tkobayas/usr/work/mvel3-development/mvel`
+- Drools: `/home/tkobayas/usr/work/mvel3-development/drools`
+  - `@Position` annotation: `kie-api/src/main/java/org/kie/api/definition/type/Position.java`
+  - Positional resolution precedent: `drools-model/drools-model-codegen/src/main/java/org/drools/model/codegen/execmodel/generator/drlxparse/ConstraintExpression.java:81-94`
 
 ## Key Commands
 
@@ -149,18 +122,17 @@ mvn install -DskipTests
 # Build + test core only
 mvn -pl drlx-parser-core -am install -DskipTests && mvn -pl drlx-parser-core test
 
-# Regenerate proto Java class (needed for phase 4 of positional impl)
-/tmp/protoc/bin/protoc --java_out=drlx-parser-core/src/main/java \
+# Regenerate proto Java class (USE BUNDLED 25.5, NOT 27.1)
+/tmp/protoc-25.5/bin/protoc --java_out=drlx-parser-core/src/main/java \
     --proto_path=drlx-parser-core/src/main/proto \
     drlx-parser-core/src/main/proto/drlx_rule_ast.proto
 
-# Regenerate ANTLR parser (needed for phase 1 of positional impl)
+# Regenerate ANTLR parser
 mvn -pl drlx-parser-core generate-sources
 ```
 
-## Reference Source Trees (read-only)
+## Issue Tracking
 
-- MVEL: `/home/tkobayas/usr/work/mvel3-development/mvel`
-- Drools: `/home/tkobayas/usr/work/mvel3-development/drools`
-  - `@Position` annotation: `kie-api/src/main/java/org/kie/api/definition/type/Position.java`
-  - Positional resolution precedent: `drools-model/drools-model-codegen/src/main/java/org/drools/model/codegen/execmodel/generator/drlxparse/ConstraintExpression.java:81-94`
+- GitHub repo: `tkobayas/drlx-parser`
+- Active issue: **#1 — Add DRLX positional pattern syntax with @Position field resolution** (will be closed after final commit + LSP coordination lands)
+- Standard labels created: epic, enhancement, bug, documentation, performance, security, refactor
