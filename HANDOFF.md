@@ -1,98 +1,75 @@
 # HANDOVER
 
-## Session goals (mixed result)
+## Session goals (mostly done)
 
-1. ✅ Rule-annotation LSP tolerance fix (epilogue to prior session) — shipped
-2. ⏸️ Tier 2 (#7 GroupElement infra + #8 `not /pattern`) — **5 of 12 tasks landed, then discovered a plan gap and paused**
-3. ✅ Gap decomposed into new sub-issues #14 (type inference) and #15 (RuleUnit runtime), spec + plan written for #14
+1. ✅ #14 Tasks 1–9 shipped — unit-class type inference is live end-to-end.
+2. ⏸️ #14 Task 10 (`docs/DESIGN.md` update) **in progress when interrupted** — grep done, no edits yet.
+3. ⏸️ #14 Task 11 (final verification, close #14, unblock #8) — not started.
 
 ## Current state
 
 ### What landed in the project repo (`/home/tkobayas/usr/work/mvel3-development/drlx-parser`, branch `main`)
 
 ```
-cd63875 test(not): add failing happy-path notSuppressesMatch (RED)
-307bc45 fix(grammar): notElement requires trailing comma         ← plan gap #1 (Task 3 omission)
-2f5d9af feat(grammar): add notElement production for single-element `not`
-77724b1 feat(lexer): add NOT keyword token
-dcaa791 refactor(ir): generalize RuleIR to tree-shape LHS         ← #7 infra, atomic refactor
-83402f2 fix(parser): tolerate rule annotations in LSP visitor     ← prior session follow-up
+882cc47 test(inference): field-scan and pattern-resolution negatives   ← #14 Task 9
+7b57961 test(inference): fail loud on missing / unresolvable unit class ← #14 Task 8
+6885b0f test(inference): inline cast beats unit-class inference         ← #14 Task 7
+d946cad test(inference): explicit pattern type passes cross-check       ← #14 Task 6
+c8e23d0 test(inference): bare var pattern inferred from unit class      ← #14 Task 5
+9d4d823 feat(runtime): resolve pattern types via unit class             ← #14 Task 4 (+ MyUnit expansion + PositionalTest disambig)
+f19f106 feat(runtime): require and resolve unit class on every build    ← #14 Task 3
+a4765b7 test: introduce MyUnit unit class and migrate DRLX imports      ← #14 Task 2
+86cd2c4 feat(ir): add unitName to CompilationUnitIR                     ← #14 Task 1
+cd63875 test(not): add failing happy-path notSuppressesMatch (RED)      ← (previous session, #8)
 ```
 
-- `NotTest#notSuppressesMatch` is **currently RED** (intentional — waiting for #8 Task 5 to land). All other tests pass.
-- Baseline before resuming: run the suite and confirm 50 green + 1 RED.
+- Test suite: **54 passing + 1 RED** (`NotTest#notSuppressesMatch`, intentional — flips GREEN when #8 Task 5 lands).
+- 14 commits ahead of `origin/main` (not pushed). Baseline for resumption: expect same 54+1.
 
-### What landed in the workspace repo
+### GitHub issues (repo `tkobayas/drlx-parser`)
 
-- `specs/2026-04-20-rule-annotations-design.md` (prior session)
-- `specs/2026-04-21-group-element-and-not-design.md` — #7/#8 design (`fd1b7c1`)
-- `specs/2026-04-21-type-inference-from-unit-class-design.md` — #14 design (`ebe3fbf`)
-- `plans/2026-04-21-group-element-and-not-implementation.md` — #8 plan, **Tasks 5-13 pending**
-- `plans/2026-04-21-type-inference-from-unit-class-implementation.md` — #14 plan, **Tasks 1-10 + final**
-- `blog/2026-04-21-tk01-where-does-person-come-from.md` — pivot entry
-
-### GitHub issues (repo: `tkobayas/drlx-parser`)
-
-- `#4` open — DrlxCompiler enhancement round 1 (parent epic, contains the 7 sub-issues as native GitHub sub-issues)
-- `#7` open — GroupElement infra
-- `#8` open, **blocked on #14** — `not /pattern`
-- `#9..13` open — downstream features
-- `#14` open — **NEXT UP**: unit-class type inference (compile-time only)
-- `#15` open — RuleUnitInstance runtime integration (post-#14)
-
-## The blocker that stopped execution
-
-Mid-#8 at Task 5 (GREEN for `visitNotElement`): the DRLX spec form `not /persons[age < 18]` has no explicit type, but the runtime builder requires `typeName` to resolve a Java class. `var p : /persons[...]` has the same problem — `resolveType("var")` throws.
-
-Solution path: read a required unit class's `DataSource<T>` / `DataStore<T>` fields to infer types. Decomposed into #14 (compile-time) + #15 (runtime). Brainstormed + planned #14; closing the session before executing it.
+- `#14` **ready to close** once Task 10 + Task 11 run.
+- `#8` still blocked-on-#14 marker; will be unblocked by Task 11's issue comment.
+- Others unchanged from last session.
 
 ## Immediate next action
 
-**Open a fresh session** and dispatch #14 Task 1:
+1. Finish `#14` **Task 10**: edit `/home/tkobayas/usr/work/mvel3-development/drlx-parser/docs/DESIGN.md` per plan Step 2 — update the `DrlxRuleAstModel` row (line 162) and add a short paragraph on cast > explicit > inferred precedence. Commit as `docs: note unit-class type inference in DESIGN.md`, `Refs #14`.
+2. Run `#14` **Task 11**: `mvn -f …/pom.xml -pl drlx-parser-core -am install` (confirm 54+1); `gh issue close 14`; `gh issue comment 8 …unblocked`.
+3. After #14 closes, resume `#8` at Task 5 (wire `visitNotElement`) — `NotTest` flips GREEN.
 
-1. Read `plans/2026-04-21-type-inference-from-unit-class-implementation.md` (Task 1).
-2. Invoke `superpowers:subagent-driven-development` (matches this epic's cadence).
-3. Dispatch #14 Task 1 implementer — adds `unitName` to `CompilationUnitIR`, proto, translator, visitor. No behaviour change; baseline tests stay green.
+## Gotchas discovered this session (load-bearing for next session)
 
-After #14 closes: resume #8 at Task 5 (re-open `plans/2026-04-21-group-element-and-not-implementation.md`). The RED `NotTest#notSuppressesMatch` will go GREEN once `visitNotElement` lands.
+- **MyUnit pre-existed.** Old shape `implements RuleUnitData` with `private final` fields + getters (commit `af453e7`). Rewritten by Task 2 to plain public fields. When `#15` (runtime RuleUnitInstance wiring) lands, the `RuleUnitData` interface must be restored — the current shape drops it.
+- **Entry-point inventory under-called in Task 2.** Missed `persons1/2/3` (DrlxCompilerTest) and PositionalTest's negative-fixture collisions (`/things` + `/locations` reused with unrelated types). Task 4 cleanup added 3 Person fields + 3 disambiguated fields (`childPositionedThings`, `duplicateLocations`, `plainLocations`) and renamed the 3 test DRLX entry points.
+- **Grammar strictness makes `resolveUnitClass`'s empty-name check dead.** `drlxCompilationUnit` requires `unit <Name>;` — ANTLR rejects missing unit before runtime. Task 8's `missingUnitDeclaration_failsLoud` test asserts on the ANTLR parser message (`"'unit'"`), not the plan's intended runtime message.
+- **Empty filter `[...]` illegal.** Grammar requires at least one condition inside `[...]` — can't write `:/persons[]`. Task 9's mismatch test uses `[ age > 18 ]`.
+- **`org.mvel3.Type` name collision.** Can't import both `org.mvel3.Type` and `java.lang.reflect.Type` — new reflection helpers in `DrlxRuleAstRuntimeBuilder` use `java.lang.reflect.Type` fully-qualified.
+- **Subagent test-count hallucinations confirmed again** — the handoff's "50+1" was also wrong; actual baseline was 45+1. Always grep surefire output directly.
 
-## Gotchas discovered this session (for future)
+## Process change mid-session
 
-- **ANTLR trailing-comma convention.** `rulePattern` has `','` baked in; any new `ruleItem` alternative needs the same or the item-separator logic in `ruleBody` breaks. Fixed in `307bc45` after Task 4's RED test failed with `"mismatched input ','"` instead of the expected visitor error. Cost: one small commit, caught by the "RED must fail for the RIGHT reason" discipline.
-- **`gh api` integer fields.** `sub_issue_id` is integer-typed; must use `-F` (capital) not `-f` (lowercase, sends string and 422s). Applies to any typed proto field in gh API.
-- **Subagent test-count hallucinations.** A Task 3 subagent reported "100 tests passing" (actual: 50, 45+5 double-counted). "Do not trust the report" gate caught it — always grep actual `Tests run:` output.
-- **The `var` sentinel.** DRLX grammar accepts `var p : /persons[...]` but no runtime test exercises it. `"var"` is decided to be treated as "no explicit type" in #14's `resolvePatternType`.
+Switched from `superpowers:subagent-driven-development` (dispatch + spec-review + quality-review per task) to inline-mode after Task 2. Subagent loop was too slow. Tasks 3–9 done inline without review subagents; code-quality reviews can be run retroactively if desired (commit range `86cd2c4..882cc47`).
 
 ## References (locate, don't open)
 
 | Topic | Path |
 |-------|------|
-| #7/#8 spec | `specs/2026-04-21-group-element-and-not-design.md` |
-| #7/#8 plan (Tasks 5-13 pending) | `plans/2026-04-21-group-element-and-not-implementation.md` |
+| #14 plan (Tasks 10 + 11 pending) | `plans/2026-04-21-type-inference-from-unit-class-implementation.md` |
 | #14 spec | `specs/2026-04-21-type-inference-from-unit-class-design.md` |
-| #14 plan (NEXT UP) | `plans/2026-04-21-type-inference-from-unit-class-implementation.md` |
-| Candidates tracker | `specs/IMPLEMENT_SYNTAX_CANDIDATES.md` |
-| This session's blog entry | `blog/2026-04-21-tk01-where-does-person-come-from.md` |
-| Drools source (read-only reference) | `/home/tkobayas/usr/work/mvel3-development/drools` |
-| Key Drools classes | `drools-base/.../GroupElement.java`, `GroupElementFactory.java`, `RuleImpl.java`; `drools-ruleunits/drools-ruleunits-api/.../DataStore.java` |
+| #7/#8 plan (Tasks 5–13 pending, resume after #14) | `plans/2026-04-21-group-element-and-not-implementation.md` |
+| Last blog entry (this session not yet written up) | `blog/2026-04-21-tk01-where-does-person-come-from.md` |
+| Drools source (read-only) | `/home/tkobayas/usr/work/mvel3-development/drools` |
 
 ## Key commands
 
 ```bash
-# Build + test (project repo)
+# Build + test
 mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/pom.xml -pl drlx-parser-core -am install
 
-# Regen proto (bundled protoc, NOT system)
-/tmp/protoc-25.5/bin/protoc --java_out=/home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/java \
-    --proto_path=/home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/proto \
-    /home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/proto/drlx_rule_ast.proto
+# Protoc (bundled)
+/tmp/protoc-25.5/bin/protoc --java_out=…/src/main/java --proto_path=…/src/main/proto …/drlx_rule_ast.proto
 
-# Git in project repo (use -C, never cd)
+# Git
 git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser <cmd>
 ```
-
-## Session cadence learned
-
-- Subagent-driven-development with two-stage review (spec + code quality) worked well for Tasks 1-4.
-- Haiku was fine for trivial tasks (lexer token, grammar addition); standard sonnet for multi-file refactors.
-- Native GitHub sub-issues (via `gh api repos/.../issues/N/sub_issues -F sub_issue_id=<id>`) are nicer than task-list-in-parent-body.
