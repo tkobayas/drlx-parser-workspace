@@ -1,142 +1,98 @@
 # HANDOVER
 
-## Session Goals (achieved)
+## Session goals (mixed result)
 
-1. Brainstorm + lock in DRLX rule-level annotation design
-2. Implement `@Salience` and `@Description` end-to-end (issue #3)
-3. Write spec, plan, and execute inline with a clean commit history
+1. ✅ Rule-annotation LSP tolerance fix (epilogue to prior session) — shipped
+2. ⏸️ Tier 2 (#7 GroupElement infra + #8 `not /pattern`) — **5 of 12 tasks landed, then discovered a plan gap and paused**
+3. ✅ Gap decomposed into new sub-issues #14 (type inference) and #15 (RuleUnit runtime), spec + plan written for #14
 
-## Current State
+## Current state
 
-### Completed This Session
-
-1. **Brainstormed and locked in rule-annotations design** — 8 decisions confirmed:
-   - Scope: exactly `@Salience(int)` and `@Description(String)`; unknowns fail loud
-   - Real annotation classes in new package `org.drools.drlx.annotations`
-   - Literal int only for `@Salience` (signed `-5` accepted); string literal for `@Description`
-   - Duplicates fail loud
-   - Strict import resolution (or FQN) — matches javac semantics
-   - `DrlxToJavaParserVisitor` throws on rule annotations; `TolerantDrlxToJavaParserVisitor` must silent-drop (cross-repo)
-   - Test scope: 4 positive + 5 negative = 9 tests
-   - Package name: `org.drools.drlx.annotations`
-
-2. **Wrote spec and implementation plan** (workspace):
-   - `specs/2026-04-20-rule-annotations-design.md`
-   - `plans/2026-04-20-rule-annotations-implementation.md`
-
-3. **Implemented rule annotations (project commits, all `Refs #3`):**
-   - `c81b904` feat(annotations): add @Salience and @Description types
-   - `f9b6d00` feat(grammar): allow annotation* prefix on ruleDeclaration
-   - `8bfcb1c` feat(ir): add RuleAnnotationIR record and RuleIR.annotations field
-   - `d277771` feat(visitor): resolve and extract rule-level annotations
-   - `920b184` feat(proto): round-trip rule annotations in RuleParseResult
-   - `60d15d2` test(rule-annotations): add failing happy-path salience test
-   - `1f5bddd` feat(runtime): apply @Salience and @Description to RuleImpl
-   - `4a4ba51` test(rule-annotations): description metadata, combined, FQN form
-   - `05b835c` test(rule-annotations): missing import surfaces clear error
-   - `2a45c55` test(rule-annotations): unsupported annotation fails loud
-   - `243538b` test(rule-annotations): duplicate @Salience fails loud
-   - `e352e26` test(rule-annotations): non-literal int arguments fail loud
-   - `efa6538` feat(parser): DrlxToJavaParserVisitor throws on rule annotations
-   - `256787d` docs: note rule annotations support in DRLX
-
-4. **Test count went from 40 → 49** (added 9 rule-annotation tests). All pass.
-
-### Architecture After This Session
-
-Canonical pipeline now handles rule-level annotations end-to-end:
+### What landed in the project repo (`/home/tkobayas/usr/work/mvel3-development/drlx-parser`, branch `main`)
 
 ```
-DRLX source
-  └─> ANTLR (DrlxParser.g4)             ← ruleDeclaration now accepts annotation* prefix
-        └─> DrlxToRuleAstVisitor        ← import map → Kind; Integer.parseInt / quoted-string check
-              └─> RuleIR(.., annotations, items)
-                    ├─> DrlxRuleAstParseResult (proto round-trip — field 3 + AnnotationKind enum)
-                    └─> DrlxRuleAstRuntimeBuilder
-                          └─> applyAnnotations()
-                                → SALIENCE     → RuleImpl.setSalience(new SalienceInteger(n))
-                                → DESCRIPTION  → RuleImpl.addMetaAttribute("Description", value)
+cd63875 test(not): add failing happy-path notSuppressesMatch (RED)
+307bc45 fix(grammar): notElement requires trailing comma         ← plan gap #1 (Task 3 omission)
+2f5d9af feat(grammar): add notElement production for single-element `not`
+77724b1 feat(lexer): add NOT keyword token
+dcaa791 refactor(ir): generalize RuleIR to tree-shape LHS         ← #7 infra, atomic refactor
+83402f2 fix(parser): tolerate rule annotations in LSP visitor     ← prior session follow-up
 ```
 
-Non-canonical:
-- `DrlxToJavaParserVisitor` (frozen) — `visitRuleDeclaration` throws when `ctx.annotation()` non-empty, symmetric with its positional rejection
-- `TolerantDrlxToJavaParserVisitor` — **NOT YET UPDATED** in `drlx-lsp` (see follow-up below)
+- `NotTest#notSuppressesMatch` is **currently RED** (intentional — waiting for #8 Task 5 to land). All other tests pass.
+- Baseline before resuming: run the suite and confirm 50 green + 1 RED.
 
-## Decisions and Rationale
+### What landed in the workspace repo
 
-- **Literal parsing via `Integer.parseInt`** — naturally rejects string literals, expressions, `10L`, `0xA` uniformly with `NumberFormatException`. Cleanest validator; avoids walking `ElementValueContext` AST. Accepts signed forms `-5`/`+7` by default.
+- `specs/2026-04-20-rule-annotations-design.md` (prior session)
+- `specs/2026-04-21-group-element-and-not-design.md` — #7/#8 design (`fd1b7c1`)
+- `specs/2026-04-21-type-inference-from-unit-class-design.md` — #14 design (`ebe3fbf`)
+- `plans/2026-04-21-group-element-and-not-implementation.md` — #8 plan, **Tasks 5-13 pending**
+- `plans/2026-04-21-type-inference-from-unit-class-implementation.md` — #14 plan, **Tasks 1-10 + final**
+- `blog/2026-04-21-tk01-where-does-person-come-from.md` — pivot entry
 
-- **Closed `Kind` enum in IR** — chose over `Map<String,String>` because the supported set is small and closed. The visitor resolves the enum once; the runtime builder never redoes name matching; proto translation is a direct switch.
+### GitHub issues (repo: `tkobayas/drlx-parser`)
 
-- **`Map<String simpleName, String fqn>` built once per compilation unit** — only includes imports that match supported annotation FQNs. Keeps the hot resolver loop at `Map.get` instead of scanning all imports per annotation.
+- `#4` open — DrlxCompiler enhancement round 1 (parent epic, contains the 7 sub-issues as native GitHub sub-issues)
+- `#7` open — GroupElement infra
+- `#8` open, **blocked on #14** — `not /pattern`
+- `#9..13` open — downstream features
+- `#14` open — **NEXT UP**: unit-class type inference (compile-time only)
+- `#15` open — RuleUnitInstance runtime integration (post-#14)
 
-- **`@Target(TYPE)` on annotation classes** — DRLX `rule` is class-like, so this is the closest semantic fit. The annotations are never reflected on at runtime; the target is advisory.
+## The blocker that stopped execution
 
-## Cross-Repo Follow-up Required
+Mid-#8 at Task 5 (GREEN for `visitNotElement`): the DRLX spec form `not /persons[age < 18]` has no explicit type, but the runtime builder requires `typeName` to resolve a Java class. `var p : /persons[...]` has the same problem — `resolveType("var")` throws.
 
-**`drlx-lsp/.../TolerantDrlxToJavaParserVisitor.java`** — must add `visitRuleDeclaration` override that silent-drops `ctx.annotation()`, otherwise the LSP inherits the throw from `DrlxToJavaParserVisitor` and breaks completion when users type `@Salience`. Required snippet:
+Solution path: read a required unit class's `DataSource<T>` / `DataStore<T>` fields to infer types. Decomposed into #14 (compile-time) + #15 (runtime). Brainstormed + planned #14; closing the session before executing it.
 
-```java
-@Override
-public Node visitRuleDeclaration(DrlxParser.RuleDeclarationContext ctx) {
-    // Silent-drop rule-level annotations (LSP tolerance).
-    SimpleName name = new SimpleName(ctx.identifier().getText());
-    RuleBody body = (RuleBody) visit(ctx.ruleBody());
-    NodeList<AnnotationExpr> annotations = new NodeList<>();
-    RuleDeclaration ruleDecl = new RuleDeclaration(null, annotations, name, body);
-    name.setParentNode(ruleDecl);
-    body.setParentNode(ruleDecl);
-    return ruleDecl;
-}
-```
+## Immediate next action
 
-This is the second cross-repo coordination item. The first (from positional) may still be open — check `drlx-lsp` status and land both together if not yet done.
+**Open a fresh session** and dispatch #14 Task 1:
 
-## Concrete Next Actions (Priority Order)
+1. Read `plans/2026-04-21-type-inference-from-unit-class-implementation.md` (Task 1).
+2. Invoke `superpowers:subagent-driven-development` (matches this epic's cadence).
+3. Dispatch #14 Task 1 implementer — adds `unitName` to `CompilationUnitIR`, proto, translator, visitor. No behaviour change; baseline tests stay green.
 
-1. **Close issue #3** via `gh issue close 3` (or include `Closes #3` on a final follow-up commit if there's more to land).
+After #14 closes: resume #8 at Task 5 (re-open `plans/2026-04-21-group-element-and-not-implementation.md`). The RED `NotTest#notSuppressesMatch` will go GREEN once `visitNotElement` lands.
 
-2. **Coordinate the `drlx-lsp` change** above before any LSP user tries rule annotations. The positional-syntax coordination note (from the previous session) may still be outstanding.
+## Gotchas discovered this session (for future)
 
-3. **Run the full benchmark** to confirm no perf regression from the new `applyAnnotations` loop (cold-path branch when `annotations.isEmpty()`).
+- **ANTLR trailing-comma convention.** `rulePattern` has `','` baked in; any new `ruleItem` alternative needs the same or the item-separator logic in `ruleBody` breaks. Fixed in `307bc45` after Task 4's RED test failed with `"mismatched input ','"` instead of the expected visitor error. Cost: one small commit, caught by the "RED must fail for the RIGHT reason" discipline.
+- **`gh api` integer fields.** `sub_issue_id` is integer-typed; must use `-F` (capital) not `-f` (lowercase, sends string and 422s). Applies to any typed proto field in gh API.
+- **Subagent test-count hallucinations.** A Task 3 subagent reported "100 tests passing" (actual: 50, 45+5 double-counted). "Do not trust the report" gate caught it — always grep actual `Tests run:` output.
+- **The `var` sentinel.** DRLX grammar accepts `var p : /persons[...]` but no runtime test exercises it. `"var"` is decided to be treated as "no explicit type" in #14's `resolvePatternType`.
 
-4. **Next syntax candidate:** Tier 2 from `specs/IMPLEMENT_SYNTAX_CANDIDATES.md` begins with **#4 GroupElement infrastructure** — prerequisite refactor that gates `not`, `exists`, and passive patterns. Recommend brainstorming that next.
+## References (locate, don't open)
 
-## Previously Completed (earlier sessions)
+| Topic | Path |
+|-------|------|
+| #7/#8 spec | `specs/2026-04-21-group-element-and-not-design.md` |
+| #7/#8 plan (Tasks 5-13 pending) | `plans/2026-04-21-group-element-and-not-implementation.md` |
+| #14 spec | `specs/2026-04-21-type-inference-from-unit-class-design.md` |
+| #14 plan (NEXT UP) | `plans/2026-04-21-type-inference-from-unit-class-implementation.md` |
+| Candidates tracker | `specs/IMPLEMENT_SYNTAX_CANDIDATES.md` |
+| This session's blog entry | `blog/2026-04-21-tk01-where-does-person-come-from.md` |
+| Drools source (read-only reference) | `/home/tkobayas/usr/work/mvel3-development/drools` |
+| Key Drools classes | `drools-base/.../GroupElement.java`, `GroupElementFactory.java`, `RuleImpl.java`; `drools-ruleunits/drools-ruleunits-api/.../DataStore.java` |
 
-- **Positional syntax** (`/locations("paris")`) — issue #1, shipped via commits `9f1e3c0`…`46176f2` + docs. 8 tests added. See `specs/2026-04-17-positional-syntax-design.md`.
-- **Inline cast** (`/objects#Car[...]`) — shipped earlier. `InlineCastTest` covers it.
-- **GitHub issue tracking** — `tkobayas/drlx-parser` has standard labels + `## Work Tracking` section in CLAUDE.md (workspace, symlinked).
-
-## Reference Source Trees (read-only)
-
-- MVEL: `/home/tkobayas/usr/work/mvel3-development/mvel`
-- Drools: `/home/tkobayas/usr/work/mvel3-development/drools`
-  - `SalienceInteger`: `drools-base/src/main/java/org/drools/base/base/SalienceInteger.java`
-  - `RuleImpl.setSalience` / `.addMetaAttribute`: `drools-base/src/main/java/org/drools/base/definitions/rule/impl/RuleImpl.java`
-  - `@Position` (still relevant for positional): `kie-api/src/main/java/org/kie/api/definition/type/Position.java`
-
-## Key Commands
+## Key commands
 
 ```bash
-# Build all modules
-mvn install -DskipTests
+# Build + test (project repo)
+mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/pom.xml -pl drlx-parser-core -am install
 
-# Build + test core only
-mvn -pl drlx-parser-core -am install -DskipTests && mvn -pl drlx-parser-core test
+# Regen proto (bundled protoc, NOT system)
+/tmp/protoc-25.5/bin/protoc --java_out=/home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/java \
+    --proto_path=/home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/proto \
+    /home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/proto/drlx_rule_ast.proto
 
-# Regenerate proto Java class (USE BUNDLED 25.5, NOT 27.1)
-/tmp/protoc-25.5/bin/protoc --java_out=drlx-parser-core/src/main/java \
-    --proto_path=drlx-parser-core/src/main/proto \
-    drlx-parser-core/src/main/proto/drlx_rule_ast.proto
-
-# Regenerate ANTLR parser
-mvn -pl drlx-parser-core generate-sources
+# Git in project repo (use -C, never cd)
+git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser <cmd>
 ```
 
-## Issue Tracking
+## Session cadence learned
 
-- GitHub repo: `tkobayas/drlx-parser`
-- Active issue: **#3 — Add DRLX rule-level annotations (@Salience, @Description)** (ready to close once LSP coordination is acknowledged)
-- Closed: #1 (positional), #2 (test split)
-- Standard labels: epic, enhancement, bug, documentation, performance, security, refactor
+- Subagent-driven-development with two-stage review (spec + code quality) worked well for Tasks 1-4.
+- Haiku was fine for trivial tasks (lexer token, grammar addition); standard sonnet for multi-file refactors.
+- Native GitHub sub-issues (via `gh api repos/.../issues/N/sub_issues -F sub_issue_id=<id>`) are nicer than task-list-in-parent-body.
