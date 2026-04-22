@@ -5,7 +5,8 @@
 1. ✅ #9 closed — `exists /pattern` + `exists(/a, /b)` both shipped, mirroring the NOT landing.
 2. ✅ Proto build migrated to `protobuf-maven-plugin` — future schema changes are `.proto`-only edits; no system `protoc` required.
 3. ✅ #15 closed (deferred) — runtime RuleUnitInstance wiring handed off to Mark upstream.
-4. ✅ 7 commits pushed to `origin/main` (range `9d87fc9..76823fd`).
+4. ✅ Stale-`.tokens` gotcha auto-fixed: `maven-clean-plugin` now wipes `*.tokens`/`*.interp`/`gen/` from the source tree before ANTLR regenerates.
+5. ✅ 8 commits pushed to `origin/main` (range `9d87fc9..bb6f3c4`).
 
 ## Current state
 
@@ -24,7 +25,7 @@ Start `#11`. Check `GroupElement.addChild` in Drools — does it still enforce s
 
 ## Gotchas (new this session)
 
-- **Stale `DrlxLexer.tokens` in `libDirectory` causes lexer/parser token-ID skew.** `antlr4-maven-plugin` prefers the file in its configured `libDirectory` (here `src/main/antlr4/org/drools/drlx/parser/`) over freshly regenerated tokens in `target/`. The file is gitignored but IDE runs and prior tool invocations drop it there silently. Symptom: `mismatched input 'X' expecting {..., 'X', ...}` — the expected-tokens list comes from the parser's internal table (built from the stale `.tokens`), not from what the lexer actually emits. **Fix:** `rm src/main/antlr4/org/drools/drlx/parser/*.tokens` + also check `drlx-parser-core/gen/` and `src/main/antlr4/.../gen/` for stale artifacts, then `mvn clean install`. See blog entry below.
+- **Stale `DrlxLexer.tokens` in `libDirectory` — now auto-mitigated.** Symptom (`mismatched input 'X' expecting {..., 'X', ...}` — expected-tokens list from parser tables disagrees with what the lexer emits) kept biting during #9. Root cause: ANTLR's `tokenVocab` resolution searches the grammar file's own directory; IDE-side ANTLR plugins drop stale `.tokens`/`.interp`/`gen/` there. Commit `bb6f3c4` adds a `maven-clean-plugin` execution at `generate-sources` that wipes those files before ANTLR regenerates. If an IDE-only build bypasses Maven, fall back to `mvn clean install`.
 - **Proto build is now plugin-managed.** `drlx_rule_ast.proto` → regenerated on every `compile` by `protobuf-maven-plugin` via `os-maven-plugin` extension. No checked-in `DrlxRuleAstProto.java`. Schema changes = edit `.proto`, let Maven regen. No system `protoc` install needed.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
