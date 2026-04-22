@@ -2,43 +2,43 @@
 
 ## Session goals (done)
 
-1. ✅ #14 closed — unit-class type inference fully shipped.
-2. ✅ #7 closed — tree-shape LHS refactor.
-3. ✅ #8 closed — single-element + multi-element `not` both shipped, incl. `not(/a, /b)` with synthetic AND wrapper for multi-child Drools NOT.
-4. ✅ 28 commits pushed to `origin/main` (range `83402f2..9d87fc9`).
+1. ✅ #9 closed — `exists /pattern` + `exists(/a, /b)` both shipped, mirroring the NOT landing.
+2. ✅ Proto build migrated to `protobuf-maven-plugin` — future schema changes are `.proto`-only edits; no system `protoc` required.
+3. ✅ #15 closed (deferred) — runtime RuleUnitInstance wiring handed off to Mark upstream.
+4. ✅ 7 commits pushed to `origin/main` (range `9d87fc9..76823fd`).
 
 ## Current state
 
 ### Test suite
-- **68 tests passing, 0 failures** (63 default + 5 no-persist).
-- NotTest: 7 (notSuppressesMatch, notWithOuterBinding, protoRoundTrip_withNot, notWithInnerBinding_failsParse, notParens_singleElement, notMultiElement_crossProduct, notEmpty_failsParse).
+- **73 tests passing, 0 failures** (68 default + 5 no-persist).
+- NotTest: 7 (unchanged).
+- ExistsTest: 5 (new) — `existsAllowsMatch`, `existsWithOuterBinding`, `existsMultiElement_crossProduct`, `existsWithInnerBinding_failsParse`, `existsEmpty_failsParse`.
 
 ### GitHub issues
-- `#7` CLOSED. `#8` CLOSED. `#14` CLOSED.
-- `#15` (runtime RuleUnitInstance wiring) still tracks MyUnit's dropped `RuleUnitData` interface.
-- **Next candidate: `#9` `exists` (bare + paren)** — same shape as `not`, can likely ship both forms in one landing.
+- `#8`, `#9`, `#14`, `#15` CLOSED.
+- **Next candidate: `#11` `and(...)` / `or(...)` group CEs.** Helper `buildGroupElementFromOopaths` already takes a `Kind` arg — AND/OR become one-line wrappers. Drools AND/OR accept N children natively, so the AND-wrap condition in `buildLhs` likely simplifies rather than generalises further. Verify before writing the spec.
 
 ## Immediate next action
 
-Start `#9` — `exists /pattern` and `exists(/a, /b)`. Check first: does Drools' `newExistsInstance()` also require a single child? If yes, reuse the AND-wrapping pattern added to `DrlxRuleAstRuntimeBuilder.buildLhs` for NOT. Spec + plan mirror `not`'s: same `GroupElementIR(EXISTS, [...])` shape, `Kind.EXISTS` slot already reserved in the IR enum.
+Start `#11`. Check `GroupElement.addChild` in Drools — does it still enforce single-child for AND/OR? Almost certainly not (the morning NOT gotcha source confirmed NOT/EXISTS are the only single-child CEs via `isNot() || isExists()`). If so, the `buildLhs` condition becomes `kind ∈ {NOT, EXISTS} && size > 1` as-is — no new case needed for AND/OR.
 
 ## Gotchas (new this session)
 
-- **Drools `newNotInstance()` requires exactly one child.** Multi-child NOT needs a synthetic AND wrapper: `NOT(AND(a, b))`. Fix added to `DrlxRuleAstRuntimeBuilder.buildLhs` (commit `be7346d`). Likely applies to EXISTS too — verify before writing #9 spec.
-- **ANTLR `#label` on alternatives splits the Context class.** Labels generate per-alternative subclasses and remove the base class's shared accessors — any existing `ctx.someChild()` call on the parent type breaks. Use unlabelled alternatives when the base class has existing consumers.
+- **Stale `DrlxLexer.tokens` in `libDirectory` causes lexer/parser token-ID skew.** `antlr4-maven-plugin` prefers the file in its configured `libDirectory` (here `src/main/antlr4/org/drools/drlx/parser/`) over freshly regenerated tokens in `target/`. The file is gitignored but IDE runs and prior tool invocations drop it there silently. Symptom: `mismatched input 'X' expecting {..., 'X', ...}` — the expected-tokens list comes from the parser's internal table (built from the stale `.tokens`), not from what the lexer actually emits. **Fix:** `rm src/main/antlr4/org/drools/drlx/parser/*.tokens` + also check `drlx-parser-core/gen/` and `src/main/antlr4/.../gen/` for stale artifacts, then `mvn clean install`. See blog entry below.
+- **Proto build is now plugin-managed.** `drlx_rule_ast.proto` → regenerated on every `compile` by `protobuf-maven-plugin` via `os-maven-plugin` extension. No checked-in `DrlxRuleAstProto.java`. Schema changes = edit `.proto`, let Maven regen. No system `protoc` install needed.
 
-Older gotchas: *unchanged — retrieve with `git show HEAD~1:HANDOFF.md`*
+Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 ## References
 
 | Topic | Path |
 |-------|------|
-| #8 plan (closed) | `plans/2026-04-22-multi-element-not-implementation.md` |
-| #8 multi-element spec | `specs/2026-04-22-multi-element-not-design.md` |
-| Latest blog entry | `blog/2026-04-22-tk01-not-a-b-two-gotchas.md` |
-| DRLXXXX.md `not`/`exists` spec | `docs/DRLXXXX.md` §"'not' / 'exists'" (line 595-600) |
+| #9 spec | `specs/2026-04-22-exists-design.md` |
+| #9 plan | `plans/2026-04-22-exists-implementation.md` |
+| Latest blog entry | `blog/2026-04-22-tk02-exists-and-two-build-detours.md` |
+| DRLXXXX.md spec reference | `docs/DRLXXXX.md` §"'not' / 'exists'" (line 595-600) |
 | Drools source (read-only) | `/home/tkobayas/usr/work/mvel3-development/drools` |
 
 ## Key commands
 
-*Unchanged — retrieve with: `git show HEAD~1:HANDOFF.md`*
+*Unchanged — retrieve with:* `git show HEAD~1:HANDOFF.md`
