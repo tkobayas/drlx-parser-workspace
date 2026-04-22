@@ -35,6 +35,7 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drlx-parser` before any o
 - All methodology artifacts go here, not in the project repo
 - Promotion to project repo is always explicit — never automatic
 - Workspace branches mirror project branches — switch both together
+- **Push workspace after handover** — once `HANDOFF.md` is committed at session end, push the workspace to `origin` if a remote exists and local is ahead. Fast-forward only; if behind or diverged, ask before acting. Project repo pushes remain explicit per request.
 
 ## Routing
 
