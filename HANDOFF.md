@@ -2,36 +2,36 @@
 
 ## Session goals (done)
 
-1. ✅ #18 closed — `TrackingAgendaEventListener` vendored into `src/test`, `DrlxBuilderTestSupport.withSession` signature changed to `BiConsumer<KieSession, TrackingAgendaEventListener>`, 12 test files migrated from anon-listener/fire-count to strict `containsExactly("RuleName")`.
-2. ✅ 14 commits pushed to `origin/main` (range `195fe39..113cf22`). Issue #18 closed with summary.
-3. ✅ Spec + plan committed to workspace; blog entry `tk02` for 2026-04-24 written.
+1. ✅ #13 closed — property-reactive watch list (second `[]` block on `oopathRoot`). Grammar, IR, proto, visitor, runtime validation (unknown / duplicate / duplicate-wildcard). Eight commits pushed (`b295dfd..f1b1bc7`).
+2. ✅ Scope discovery mid-session: `DrlxLambdaConstraint` doesn't override `getListenedPropertyMask`, so alpha mask defaults to AllSetButLastBitMask and defeats the watch list when alpha constraints are present. Verified via Codex. Scoped down, filed **#19** for the constraint-mask override (with drools-model-compiler `LambdaConstraint.java:166-188` as reference).
+3. ✅ Spec + plan committed to workspace; blog entry `tk03` for 2026-04-24.
 
 ## Current state
 
 ### Test suite
-- **96 tests passing, 0 failures** (baseline unchanged — this was pure infra).
-- No-persist mode: 5 no-persist tests + 66 persistence-agnostic tests all passing, 30 skipped (expected).
-- No new tests; assertions upgraded from `hasSize(N)` to `containsExactly("RuleName")` for strict rule-name verification.
+- **108 tests passing, 0 failures.** Was 96 → +3 parse-only (`DrlxParserTest`) + 7 behavioural (`PropertyReactiveWatchListTest`) + 2 proto round-trip (`DrlxRuleAstParseResultTest`).
+- No-persist mode: 75 running + 33 skipped (baseline +3, inheriting `@DisabledIfSystemProperty` from `DrlxBuilderTestSupport`).
 
 ### GitHub issues
-- `#18` CLOSED by manual `gh issue close` with implementation summary (commits used `Refs #18`, not `Closes #18`).
-- Next candidates (open): `#13` property-reactive watch list, `#12` if/else branching, `#16` RuleIR proto experiment.
+- `#13` CLOSED with summary comment (limitation noted; links to #19).
+- `#19` OPEN — `DrlxLambdaConstraint.getListenedPropertyMask`. Full context + file:line refs + drools-model reference embedded in the issue body.
+- Next candidates (open): `#12` if/else branching, `#19` constraint mask (finishes #13), `#16` RuleIR proto experiment.
 
-### Migration policy (recorded in spec)
-Bare `fireAllRules() == N` is allowed only for obvious single-rule tests. Any test exercising multiple rules, firing order, or rule-specific behaviour MUST assert on `listener.getAfterMatchFired()`. Four files stay bare: `InlineCastTest`, `TypeInferenceTest`, `PositionalTest`, `DrlxCompilerNoPersistTest`.
+### Migration policy
+*Unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 ## Immediate next action
 
-Decide next ticket with user. Unchanged from last session:
-- **#13 property-reactive watch list** — different subsystem (Drools' listened-properties), no grammar interaction.
-- **#12 if/else branching** — grammar work; larger scope.
+Decide next ticket with user. The three-way choice is:
+- **#19 constraint mask** — finishes what #13 started. Reference impl in `drools-model-compiler/.../LambdaConstraint.java:166-188`. Tests already written (the behavioural cases currently restricted to empty-conditions form would extend once the mask lands).
+- **#12 if/else branching** — grammar work, larger scope.
 - **#16 RuleIR proto experiment** — infrastructure refactor.
 
 ## Gotchas (new this session)
 
-- **Surefire `-Dtest=<SingleClass>` skips tests guarded by `@DisabledIfSystemProperty`.** Running `mvn test -Dtest=DrlxRuleBuilderTest` reported all 5 tests SKIPPED; the full-suite run had them passing seconds before. Surefire's targeted-class mode somehow flips or fails to unset the property. Workaround: run the full suite to verify. Don't spend fifteen minutes debugging the test.
-- **Drools `LogicTransformer` preserves the original rule name across OR-split branches.** When a top-level OR expands into two rule instances, both instances carry the original rule name — no `_0`/`_1` suffixes. Useful for `containsExactly("Name", "Name")` assertions in OR tests.
-- **Atomic signature-change pattern worked cleanly.** Renaming 13 lambda headers via sed, then compiling to catch stragglers, kept the change reviewable as per-file commits afterwards. Each migration is independently revertible.
+- **`EntryPoint.update(fh, obj)` (2-arg) hard-codes modification mask to `AllSetBitMask.get()`** (`NamedEntryPoint.java:287-293`). For external tests that care about property reactivity, always use the 3-arg form: `ep.update(fh, obj, "propName1", "propName2")`. In rule consequences, `modify($x) { setX(...) }` compiles to the 3-arg form.
+- **TypeDeclaration must be registered on the KieBase for `isPropertyReactive(ruleBase, objectType)` to return true.** Pattern for programmatic KieBase construction: register `TypeDeclaration.createTypeDeclarationForBean(cls, PropertySpecificOption.ALWAYS)` on a `KnowledgePackageImpl` keyed by the class's own package (not the rule's package). Mirror `drools-model-compiler/.../KiePackagesBuilder.java:1317-1335`. Without this the entire property-reactive machinery stays dormant.
+- **`AllSetButLastBitMask` is "all bits except bit 0" (the traitable bit), not literally AllSet.** But for non-trait classes, it's effectively "watch every real property" — which is why the default `Constraint.getListenedPropertyMask` behaves as a catch-all.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -39,11 +39,12 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #18 spec | `specs/2026-04-24-tracking-agenda-event-listener-design.md` |
-| #18 plan | `plans/2026-04-24-tracking-agenda-event-listener-implementation.md` |
-| Latest blog entry | `blog/2026-04-24-tk02-strict-rule-assertion.md` |
-| Vendored listener (upstream copy) | `drlx-parser-core/src/test/java/org/drools/core/event/TrackingAgendaEventListener.java` |
-| New `withSession` signature | `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/DrlxBuilderTestSupport.java:13` |
+| #13 spec | `specs/2026-04-24-property-reactive-watch-list-design.md` |
+| #13 plan | `plans/2026-04-24-property-reactive-watch-list-implementation.md` |
+| Latest blog entry | `blog/` → `2026-04-24-tk03-watch-list-half-shipped.md` |
+| #19 (follow-up) | GitHub issue — constraint-mask override reference implementation |
+| ReactiveEmployee fixture | `drlx-parser-core/src/test/java/org/drools/drlx/domain/ReactiveEmployee.java` |
+| PropertyReactiveWatchListTest | `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/PropertyReactiveWatchListTest.java` |
 
 ## Key commands
 
