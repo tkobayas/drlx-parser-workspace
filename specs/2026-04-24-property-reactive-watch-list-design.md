@@ -130,7 +130,7 @@ Mirrors `PatternBuilder.processListenedPropertiesAnnotation` (drools-compiler) m
 private static List<String> validateWatchedProperties(List<String> raw,
                                                       Class<?> patternClass,
                                                       String typeLabel) {
-    List<String> accessible = ClassUtils.getAccessibleProperties(patternClass);
+    List<String> accessible = PropertyReactivityUtil.getAccessibleProperties(patternClass);
     List<String> result = new ArrayList<>();
     for (String item : raw) {
         if (item.equals("*") || item.equals("!*")) {
@@ -157,7 +157,7 @@ private static List<String> validateWatchedProperties(List<String> raw,
 }
 ```
 
-Accessible-properties source: `org.drools.util.ClassUtils.getAccessibleProperties(Class)`, the helper Drools itself uses (getter/setter reflection).
+Accessible-properties source: `org.drools.base.util.PropertyReactivityUtil.getAccessibleProperties(Class)`, the helper Drools itself uses for property-reactivity masks (getter/setter reflection).
 
 Error class `RuntimeException` matches existing validation style in `DrlxRuleAstRuntimeBuilder` (e.g. `resolvePositionalField`).
 
