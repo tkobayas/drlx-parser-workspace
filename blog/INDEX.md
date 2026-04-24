@@ -10,3 +10,4 @@
 | [2026-04-23-tk02-bindings-in-groups-and-the-readers-the-plan-missed.md](2026-04-23-tk02-bindings-in-groups-and-the-readers-the-plan-missed.md) | 2026-04-23 | Bindings in groups — and the readers the plan missed |
 | [2026-04-24-tk01-passive-patterns-rete-flag.md](2026-04-24-tk01-passive-patterns-rete-flag.md) | 2026-04-24 | Passive patterns — what `?/persons` becomes in Rete |
 | [2026-04-24-tk02-strict-rule-assertion.md](2026-04-24-tk02-strict-rule-assertion.md) | 2026-04-24 | Strict rule assertion — from fire count to named matches |
+| [2026-04-24-tk03-watch-list-half-shipped.md](2026-04-24-tk03-watch-list-half-shipped.md) | 2026-04-24 | Watch list — half shipped, and why |
