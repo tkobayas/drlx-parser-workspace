@@ -2,33 +2,34 @@
 
 ## Session goals (done)
 
-1. ✅ #17 closed — bound patterns as children of `and/or/not/exists` paren CEs. `boundOopath` factored out of `rulePattern`, reused by `groupChild`.
-2. ✅ 7 commits pushed to `origin/main` (range `6f5c4cf..3cffa03`).
-3. ✅ Spec + plan committed to workspace; blog entry `tk02` written.
+1. ✅ #10 closed — passive patterns `?/persons[...]`. Grammar adds `QUESTION?` prefix to `oopathExpression`; IR gains `boolean passive`; runtime calls `Pattern.setPassive(parseResult.passive())`.
+2. ✅ 3 commits pushed to `origin/main` (range `3cffa03..195fe39`). Issue #10 auto-closed.
+3. ✅ Spec + plan committed to workspace; blog entry `tk01` for 2026-04-24 written.
 
 ## Current state
 
 ### Test suite
-- **94 tests passing, 0 failures** (89 default + 5 no-persist).
-- New this session: `BindingInGroupTest` (4), `OrBindingScopeTest` (3), `NotExistsBindingTest` (2), `NestedGroupTest#andWithNestedNotCarryingBinding` (1 extension).
-- All existing tests unchanged — `boundOopath` factor-out is behaviour-preserving at the top level.
+- **101 tests passing, 0 failures** (96 default + 5 no-persist).
+- New this session: `DrlxParserTest` (2 parse-tree), `DrlxRuleAstParseResultTest` (2 proto round-trip), `PassivePatternTest` (3 behavioural). `NotTest#protoRoundTrip_withNot` updated for the new 7-arg `PatternIR` constructor.
 
 ### GitHub issues
-- `#17` CLOSED. Summary comment left on issue.
-- Next candidates (open): `#10` passive `?/persons`, `#13` property-reactive watch list, `#12` if/else branching, `#16` RuleIR proto experiment.
-- Claim from blog entry: "DRLXXXX §16 feels done." The "and/or structures" section of the DRLX spec now has canonical bound-pattern examples and a branch-local scope paragraph.
+- `#10` CLOSED by `195fe39`'s `Closes #10` trailer.
+- Next candidates (open): `#13` property-reactive watch list, `#12` if/else branching, `#16` RuleIR proto experiment.
 
-### `docs/DRLXXXX.md` — newly tracked
-`docs/DRLXXXX.md` was previously untracked in the project repo; commit `3cffa03` added it to git for the first time (1291 lines) alongside the scope-paragraph edit. User explicitly approved keeping it as-is rather than reverting. Future edits are normal in-place diffs.
+### Visibility relaxation (one minor API change)
+`DrlxRuleAstParseResult.toProtoLhs` / `fromProtoLhs` were relaxed from `private static` to package-private `static` so `DrlxRuleAstParseResultTest` can call them directly. The backward-compat test (proto missing field 7 deserialises to `passive=false`) can't be produced via the public `save`/`load` path — `save` always writes with the current schema. Commit message on `29dc662` explains.
 
 ## Immediate next action
 
-Decide next ticket with user. Reasonable defaults: `#10` passive `?/persons` (natural since it also touches `groupChild` shape and the grammar now has a clean single-source-of-truth non-terminal to extend) or `#13` property-reactive watch list (different subsystem, no grammar interaction — good if user wants variety).
+Decide next ticket with user. Reasonable defaults:
+- **#13 property-reactive watch list** — different subsystem (Drools' listened-properties machinery), no grammar interaction. Good variety after three grammar-focused tickets (#11, #17, #10).
+- **#12 if/else branching** — grammar work in the rule body structure; larger scope than recent tickets.
+- **#16 RuleIR proto experiment** — infrastructure refactor, no user-visible syntax.
 
 ## Gotchas (new this session)
 
-- **Factoring out an ANTLR non-terminal fans out to every Java reader of the old context's accessors.** When `rulePattern : boundOopath ','` moved the `identifier` / `oopathExpression` accessors onto `BoundOopathContext`, three places broke mid-plan: `DrlxToRuleAstVisitor` (expected — plan covered it), `DrlxToJavaParserVisitor` frozen-parent LSP visitor (not in plan), and `DrlxParserTest` parse-tree assertions (not in plan). Symptom: compile errors "cannot find symbol method identifier(int) on RulePatternContext". Lesson: before committing a grammar factor-out, grep for every call site of the old accessors (`ctx.identifier(0).getText()`, `ctx.oopathExpression()` on a `RulePatternContext`) and include all of them in the plan.
-- **Drools throws `RuntimeException` at `KieBase.newKieSession()` when a sibling references an OR-internal binding outside the group.** Makes the branch-local OR scope assertion trivial: wrap `withSession` in `assertThatThrownBy`. No DRLX-layer enforcement needed.
+- **Fanout audit should run BEFORE the grammar change.** Last session's `boundOopath` factor-out caught three unplanned readers mid-plan. This session's Task 1 was a read-only grep of every `OopathExpressionContext` reader, confirming all navigate via named accessors. Zero mid-plan surprises. Pattern: for any ANTLR grammar change that shifts accessors, grep every Java reader upfront and include them in the plan.
+- **Round-trip tests need direct converter access when covering backward-compat.** Proto3's default-false behaviour (absent bool == false) can only be exercised by constructing a proto missing the new field — the public `save`/`load` path always writes with the current schema. Package-private access on the converter methods is the minimum surface that enables this.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -36,11 +37,11 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #17 spec | `specs/2026-04-23-bindings-in-groups-design.md` |
-| #17 plan | `plans/2026-04-23-bindings-in-groups-implementation.md` |
-| Latest blog entries | `blog/2026-04-23-tk01-and-or-and-the-and-that-ate-double-ampersand.md`, `blog/2026-04-23-tk02-bindings-in-groups-and-the-readers-the-plan-missed.md` |
-| DRLXXXX.md scope paragraph | `docs/DRLXXXX.md` §"'and' / 'or' structures" (after the nested-or example) |
-| Drools `GroupElement.pack()` | `~/usr/work/mvel3-development/drools/drools-base/src/main/java/org/drools/base/rule/GroupElement.java` (line 143-183) — confirmed to preserve outer-AND bindings inside nested NOT |
+| #10 spec | `specs/2026-04-24-passive-patterns-design.md` |
+| #10 plan | `plans/2026-04-24-passive-patterns-implementation.md` |
+| Latest blog entry | `blog/2026-04-24-tk01-passive-patterns-rete-flag.md` |
+| Drools `Pattern.setPassive` | `drools-base/src/main/java/org/drools/base/rule/Pattern.java:233-239` |
+| Drools BetaNode consuming passive | `drools-core/src/main/java/org/drools/core/reteoo/BetaNode.java:172,272-274` |
 
 ## Key commands
 
