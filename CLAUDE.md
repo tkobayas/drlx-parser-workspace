@@ -6,6 +6,7 @@
 ## Session Start
 
 Run `add-dir /home/tkobayas/usr/work/mvel3-development/drlx-parser` before any other work.
+Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 
 ## Artifact Locations
 
