@@ -219,3 +219,18 @@ Existing `PatternIR` construction sites (four: two in `DrlxToRuleAstVisitor`, on
 - Auto-adding constraint-referenced fields to the watch list (DRL7's `PatternBuilder` does this). Can be added in a follow-up; current MVP is explicit-only.
 - Class-level `@PropertyReactive` requirement (needs DRLX type-declaration support).
 - Watch lists on non-root chunks (`/a[...][...]/b[...][...]`). Drools' `Pattern` is a root-level concept; navigation chunks don't have their own pattern.
+
+## Known limitation — alpha mask defeats watch list when conditions are present
+
+DRLX's `DrlxLambdaConstraint` does not override `Constraint.getListenedPropertyMask`, so the default in `drools-base/.../Constraint.java:86-96` returns `AllSetButLastBitMask.get()` — effectively "watch every property." Alpha-node `inferredMask` = alpha.declaredMask ∪ RTN.declaredMask, so union with AllSet stays AllSet, and any modification propagates through the alpha regardless of the explicit watch list.
+
+**Observed behaviour:**
+
+- `[][basePay, bonusPay]` — watch list fully restricts modification re-evaluation. Works.
+- `[salary > 0][basePay]` — watch list is ineffective at blocking modifications; the alpha's catch-all mask lets everything through.
+
+The syntax, validation, IR, proto, and pattern-level wiring all work correctly; the limitation is purely about how restrictively the watch list filters Rete-level propagation. Executable-model's `LambdaConstraint` (`drools-model-compiler/.../LambdaConstraint.java:166-188`) overrides `getListenedPropertyMask` using evaluator metadata to report field references — the same approach will lift this limitation once applied to DRLX.
+
+Tracked as follow-up: see the DRLX repo issue for `DrlxLambdaConstraint.getListenedPropertyMask`.
+
+The test suite therefore restricts its behavioural happy-path cases to the empty-conditions form (`/...[][watch]`). The syntax, IR, and error-path tests cover both forms.
