@@ -32,3 +32,4 @@ Candidates for enhancing DrlxCompiler to cover more DRLX syntax, prioritized by 
 - "Multiple constraints in `[]`" is already implemented (grammar + visitor handle comma-separated constraints).
 - `not`/`exists` touch 4 layers: grammar, visitor, proto, and runtime builder — they should not be attempted before the GroupElement infrastructure (item 4) is in place.
 - The `findReferencedBindings()` regex in `DrlxRuleAstRuntimeBuilder` will need scope-aware binding tracking once `not`/`exists` are added (variables bound inside `not` must not be visible outside).
+- **`test` (DRLXXXX § "test", lines 720–725)** — IMPLEMENTED in #23. Eval-style guard, foundation for `if`/`else` (#12). Adds `EvalIR` to the LHS-item sealed hierarchy and bridges MVEL3 boolean lambdas to drools-base `EvalCondition`.

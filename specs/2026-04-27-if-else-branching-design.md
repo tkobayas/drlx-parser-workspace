@@ -139,21 +139,13 @@ Inherit existing `or` semantics — no new logic in #12:
 | Nested `if/else` inside a branch | Allowed; recursion handled naturally. Guards compose: outer's AND wraps inner's OR. |
 | Side-effecting guard expression | No special guarantee — same as any DRLX constraint expression. Out of scope. |
 
-### 5. Property-reactivity limitation
+### 5. Property reactivity
 
-`org.drools.base.rule.EvalCondition.isPatternScopeDelimiter()` returns `true`, meaning **`EvalCondition` is a hard boundary for property-reactivity scope**. Practical consequence:
+DRLX configures patterns with `PropertySpecificOption.ALWAYS` (`DrlxRuleAstRuntimeBuilder.java:105`), so all properties are watched by default. A guard like `if (c.creditRating == Rating.LOW) { … }` re-evaluates naturally on `creditRating` updates — no explicit watch list required.
 
-```drlx
-var c : /customers,
-if (c.creditRating == Rating.LOW) { /* … */ } else { /* … */ },
-do { /* … */ }
-```
+This is the empirical behavior verified in #23's `TestElementTest.test_refiresOnPropertyUpdate` and inherited by #12. Note that drools-base's `EvalCondition.isPatternScopeDelimiter() == true` does *not* inhibit re-evaluation in this configuration; the pattern's ALWAYS-mode watched-property mask covers all properties regardless of where they're referenced.
 
-The `c.creditRating` reference inside the if-guard does **not** add `creditRating` to the customer pattern's listened-property mask. If a customer's `creditRating` changes from `HIGH` → `LOW`, the engine will not automatically re-evaluate the rule.
-
-**Documented limitation in #12.** Users who need property-reactive guards on outer-scope bindings must add explicit watches via DRLX's watch-list syntax on the relevant pattern (e.g., `var c : /customers[][creditRating], if (c.creditRating == Rating.LOW) { … }`).
-
-A follow-up issue may propagate guard-expression property reads back into preceding patterns automatically (similar in spirit to #19's `Evaluator.getReadProperties()` for pattern constraints). Out of scope for #12.
+If DRLX ever switches to `ALLOWED` mode (requiring `@PropertyReactive` annotations or explicit watch lists), this section will need revisiting — guard expressions would need to contribute their property reads to preceding patterns' masks (similar in spirit to #19's `Evaluator.getReadProperties()`).
 
 ## Testing
 
@@ -176,7 +168,7 @@ New test classes in `drlx-parser-core/src/test/java/org/drools/drlx/builder/synt
 5. Multi-element branch — implicit AND, cross-pattern join inside branch.
 6. Nested if/else.
 7. Group element inside branch — e.g., `not(/widget)` plus a pattern.
-8. Property reactivity with explicit watch list — verifies that the documented workaround works.
+8. Property reactivity — guard re-evaluates on outer-scope binding's property update (covered by ALWAYS-mode default; no explicit watch list needed).
 
 Target: ~8–10 runtime tests + parse tests. Smaller than the original #12 scope because EvalIR-direct tests and EvalExpression bridging tests live with #23.
 

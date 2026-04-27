@@ -1006,18 +1006,20 @@ EOF
 
 ---
 
-## Task 9: Property-reactivity workaround — explicit watch list
+## Task 9: Property-reactivity natural behavior
 
 **Files:**
 - Modify: `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/IfElseTest.java`
 
-This task verifies that the **documented limitation** (`EvalCondition` is a property-reactivity scope delimiter) can be worked around with explicit watch-list syntax.
+DRLX uses `PropertySpecificOption.ALWAYS` (`DrlxRuleAstRuntimeBuilder.java:105`), so all properties are watched by default. An if-guard like `if (c.creditRating == Rating.LOW) { … }` re-evaluates naturally on `creditRating` updates — no explicit watch list required.
+
+#23's `TestElementTest.test_refiresOnPropertyUpdate` already covers this for the underlying `EvalIR`. This task adds an analogous test through the if/else surface.
 
 - [ ] **Step 1: Append failing test**
 
 ```java
 @Test
-void propertyReactivity_withExplicitWatchList() {
+void ifElse_refiresOnOuterScopePropertyUpdate() {
     String rule = """
             package org.drools.drlx.parser;
             import org.drools.drlx.domain.Customer;
@@ -1027,7 +1029,7 @@ void propertyReactivity_withExplicitWatchList() {
             import org.drools.drlx.ruleunit.CreditUnit;
             unit CreditUnit;
             rule R1 {
-                var c : /customers[][creditRating],
+                var c : /customers,
                 if (c.creditRating == Rating.LOW) {
                     var p : /products[ rate == Rates.HIGH ]
                 } else {
@@ -1039,7 +1041,7 @@ void propertyReactivity_withExplicitWatchList() {
     withSession(rule, (session, listener) -> {
         EntryPoint customers = session.getEntryPoint("customers");
         EntryPoint products = session.getEntryPoint("products");
-        Customer alice = new Customer("Alice", Rating.HIGH);    // initial: HIGH → else branch
+        Customer alice = new Customer("Alice", Rating.HIGH);   // initial: else branch
         org.kie.api.runtime.rule.FactHandle handle = customers.insert(alice);
         products.insert(new Product("luxury", Rates.HIGH));
         products.insert(new Product("budget", Rates.LOW));
@@ -1048,32 +1050,27 @@ void propertyReactivity_withExplicitWatchList() {
 
         alice.setCreditRating(Rating.LOW);
         customers.update(handle, alice);
-        // With explicit watch on creditRating, property change re-evaluates:
+        // ALWAYS-mode property reactivity — re-evaluates without explicit watch list.
         assertThat(session.fireAllRules()).isEqualTo(1);
     });
 }
 ```
 
-If DRLX's watch-list syntax `[][creditRating]` is not yet implemented (verify by reading `specs/2026-04-24-property-reactive-watch-list-design.md` and the corresponding plan), use whichever syntax actually works in the codebase today — possibly `@Watches({"creditRating"})` annotation or similar.
-
-If no working watch-list syntax is available at all, mark this test `@Disabled("requires property-reactive watch list — see #13")` with a comment linking the issue, and add a release-note: "Property-reactive guards on outer-scope bindings via `if`/`else` require explicit watch lists; currently no syntax."
-
 - [ ] **Step 2: Run test**
 
-Run: `mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/pom.xml test -Dtest=IfElseTest#propertyReactivity_withExplicitWatchList`
+Run: `mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/pom.xml test -Dtest=IfElseTest#ifElse_refiresOnOuterScopePropertyUpdate`
 
-Expected: PASS (or `@Disabled` if watch list isn't ready).
+Expected: PASS.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser add drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/IfElseTest.java
 git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser commit -m "$(cat <<'EOF'
-test: property reactivity through if/else with explicit watch list
+test: if/else re-fires on outer-scope property update
 
-Documents the workaround for the EvalCondition scope-delimiter
-limitation — users add explicit watches when they need
-property-reactive guards on outer-scope bindings.
+ALWAYS-mode property reactivity covers guard expressions naturally;
+no explicit watch list required (mirrors #23's TestElementTest).
 
 Refs #12
 EOF
