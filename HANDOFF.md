@@ -2,36 +2,36 @@
 
 ## Session goals (done)
 
-1. ✅ #13 closed — property-reactive watch list (second `[]` block on `oopathRoot`). Grammar, IR, proto, visitor, runtime validation (unknown / duplicate / duplicate-wildcard). Eight commits pushed (`b295dfd..f1b1bc7`).
-2. ✅ Scope discovery mid-session: `DrlxLambdaConstraint` doesn't override `getListenedPropertyMask`, so alpha mask defaults to AllSetButLastBitMask and defeats the watch list when alpha constraints are present. Verified via Codex. Scoped down, filed **#19** for the constraint-mask override (with drools-model-compiler `LambdaConstraint.java:166-188` as reference).
-3. ✅ Spec + plan committed to workspace; blog entry `tk03` for 2026-04-24.
+1. ✅ #19 closed — `DrlxLambdaConstraint.getListenedPropertyMask` overrides via new `Evaluator.getReadProperties()`. Two-repo: MVEL3 (`mvel3-read-props`, merged upstream as [mvel/mvel#423](https://github.com/mvel/mvel/issues/423)), DRLX ([PR #21](https://github.com/tkobayas/drlx-parser/pull/21), merged).
+2. ✅ Spec + plan committed; both have a "Deviations during implementation" addendum capturing what shipped vs. what was designed.
+3. ✅ Blog entry `tk01` for 2026-04-27 (`constraint-mask-deviations`).
+4. ✅ CLAUDE.md updated with MVEL3 add-dir note + SNAPSHOT install rule.
 
 ## Current state
 
 ### Test suite
-- **108 tests passing, 0 failures.** Was 96 → +3 parse-only (`DrlxParserTest`) + 7 behavioural (`PropertyReactiveWatchListTest`) + 2 proto round-trip (`DrlxRuleAstParseResultTest`).
-- No-persist mode: 75 running + 33 skipped (baseline +3, inheriting `@DisabledIfSystemProperty` from `DrlxBuilderTestSupport`).
+- **111 tests passing, 0 failures.** Was 108 → +3 condition+watch-list cases in `PropertyReactiveWatchListTest`.
+- MVEL3 full suite: 720 passing.
 
 ### GitHub issues
-- `#13` CLOSED with summary comment (limitation noted; links to #19).
-- `#19` OPEN — `DrlxLambdaConstraint.getListenedPropertyMask`. Full context + file:line refs + drools-model reference embedded in the issue body.
-- Next candidates (open): `#12` if/else branching, `#19` constraint mask (finishes #13), `#16` RuleIR proto experiment.
+- `#13` CLOSED (last session). `#19` CLOSED (this session). `mvel/mvel#423` MERGED upstream.
+- Next candidates (open): `#12` if/else branching, `#16` RuleIR proto experiment.
 
 ### Migration policy
 *Unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 ## Immediate next action
 
-Decide next ticket with user. The three-way choice is:
-- **#19 constraint mask** — finishes what #13 started. Reference impl in `drools-model-compiler/.../LambdaConstraint.java:166-188`. Tests already written (the behavioural cases currently restricted to empty-conditions form would extend once the mask lands).
+Decide next ticket with user. Two-way choice:
 - **#12 if/else branching** — grammar work, larger scope.
 - **#16 RuleIR proto experiment** — infrastructure refactor.
 
 ## Gotchas (new this session)
 
-- **`EntryPoint.update(fh, obj)` (2-arg) hard-codes modification mask to `AllSetBitMask.get()`** (`NamedEntryPoint.java:287-293`). For external tests that care about property reactivity, always use the 3-arg form: `ep.update(fh, obj, "propName1", "propName2")`. In rule consequences, `modify($x) { setX(...) }` compiles to the 3-arg form.
-- **TypeDeclaration must be registered on the KieBase for `isPropertyReactive(ruleBase, objectType)` to return true.** Pattern for programmatic KieBase construction: register `TypeDeclaration.createTypeDeclarationForBean(cls, PropertySpecificOption.ALWAYS)` on a `KnowledgePackageImpl` keyed by the class's own package (not the rule's package). Mirror `drools-model-compiler/.../KiePackagesBuilder.java:1317-1335`. Without this the entire property-reactive machinery stays dormant.
-- **`AllSetButLastBitMask` is "all bits except bit 0" (the traitable bit), not literally AllSet.** But for non-trait classes, it's effectively "watch every real property" — which is why the default `Constraint.getListenedPropertyMask` behaves as a catch-all.
+- **`MVELCompiler.registerAndRename` uses `findFirst(MethodDeclaration.class)`** (`MVELCompiler.java:238`). If you add methods to a generated MVEL3 evaluator class, emit them *after* the eval method (after `MVELToJavaRewriter.rewriteChildren`). Otherwise `LambdaUtils.createLambdaKeyFromMethodDeclaration` operates on the wrong method and fails with `StringIndexOutOfBoundsException`.
+- **MVEL3's symbol resolver rejects bare getter calls in user expressions.** `getBasePay()` doesn't compile even with declarations populated — drools-model uses `_this.getX()` form because that's produced by *its own rewriter*, not user-written. Don't assume drools-model expression shapes work as MVEL3 input.
+- **DRLX puts every JavaBeans property in MVEL3's `available` set.** `DrlxLambdaCompiler.extractDeclarations:53-69` registers each property as a `Declaration`. Any analyser logic that branches on `available.contains(name)` will treat all property reads as known declarations — design accordingly.
+- **JavaParser's `FieldAccessExpr.name` is a `SimpleName`, not a `NameExpr`.** Visitors that visit `NameExpr` correctly skip the field-name part of `p.name`. Cross-pattern join (`name == p.name`) handling falls out for free.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -39,12 +39,12 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #13 spec | `specs/2026-04-24-property-reactive-watch-list-design.md` |
-| #13 plan | `plans/2026-04-24-property-reactive-watch-list-implementation.md` |
-| Latest blog entry | `blog/` → `2026-04-24-tk03-watch-list-half-shipped.md` |
-| #19 (follow-up) | GitHub issue — constraint-mask override reference implementation |
-| ReactiveEmployee fixture | `drlx-parser-core/src/test/java/org/drools/drlx/domain/ReactiveEmployee.java` |
-| PropertyReactiveWatchListTest | `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/PropertyReactiveWatchListTest.java` |
+| #19 spec | `specs/2026-04-27-constraint-mask-design.md` |
+| #19 plan | `plans/2026-04-27-constraint-mask-implementation.md` |
+| Latest blog entry | `blog/2026-04-27-tk01-constraint-mask-deviations.md` |
+| MVEL3 source | `/home/tkobayas/usr/work/mvel3-development/mvel` (add-dir if MVEL3 changes needed) |
+| DRLX PR for #19 | https://github.com/tkobayas/drlx-parser/pull/21 |
+| MVEL3 PR | mvel/mvel#423 (merged) |
 
 ## Key commands
 
