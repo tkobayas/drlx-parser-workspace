@@ -142,13 +142,13 @@ Runtime alpha-mask plumbing:
 - **DRLX `getListenedPropertyMask`** — if `getReadProperties()` returns `[]` (no reads found, or evaluator predates the MVEL3 change), fall back to `super.getListenedPropertyMask(...)` (preserves current AllSetButLastBitMask behavior — important for safety: a constraint like `1 == 1` shouldn't suddenly listen to nothing).
 - **Properties referenced but not in `settableProperties`** — silently filtered (matches `LambdaConstraint:182-184`).
 
-## Open questions
+## Open questions (resolved 2026-04-27)
 
-1. **Aliased property access in DRLX.** Can a user write `[e.salary > 0]` where `e` is the pattern binding? If yes, the MVEL3 analyser would see this as a `FieldAccessExpr`, not a `NameExpr`, and miss it under v1 scope. Need to confirm by inspecting existing DRLX tests / grammar before locking the analyser scope. If aliased form is supported, add `FieldAccessExpr` where the scope NameExpr is the binding to the v1 collection.
+1. **Aliased property access in DRLX.** ✅ Resolved — no plan change. Test corpus uses bare names for the current pattern's properties; cross-pattern joins (`name == p.name`) are correctly handled because the field name is a `SimpleName` (not `NameExpr`) so it's not visited. The hypothetical `e.salary` (current-pattern-aliased) form falls back to AllSetButLastBitMask via the empty-result branch — over-listens, doesn't under-listen. If `FieldAccessExpr` handling is ever needed, file as a follow-up.
 
-2. **Proto round-trip path.** `DrlxLambdaConstraint`'s second constructor (line 39) takes a pre-compiled evaluator. After proto deserialization, does the runtime use this constructor, or does it re-compile from the expression? If pre-compiled, the new `getReadProperties()` must round-trip through whatever serialization MVEL3 uses for the evaluator class. Need to confirm during plan stage.
+2. **Proto round-trip path.** ✅ Resolved — no plan change. Proto serializes the IR (`PatternIR` with conditions as expression strings), not the compiled `Evaluator`. After deserialization, `DrlxLambdaCompiler` rebuilds the constraint via either the pre-built or batch path; both produce a freshly-compiled MVEL3 evaluator class with `getReadProperties()` emitted. `getListenedPropertyMask` runs during `AlphaNode` wiring, after `bindEvaluator` has been called.
 
-3. **Issue tracking for the MVEL3 side.** Should the MVEL3 work be tracked as its own issue (in some MVEL3 tracker, or as a referenced sub-task under #19), or rolled into #19 commits with `Refs #19`? Defer to user during plan stage.
+3. **Issue tracking for the MVEL3 side.** ✅ Resolved — dedicated MVEL3 issue filed at [mvel/mvel#423](https://github.com/mvel/mvel/issues/423). MVEL3 commits use `Refs mvel/mvel#423` (fully qualified because `tkobayas/mvel` (origin) has issues disabled).
 
 ## Non-goals
 

@@ -19,7 +19,7 @@
 
 **Issue tracking:**
 - DRLX commits: `Refs #19` (Phase 2 final commit: `Closes #19`)
-- MVEL3 commits: no MVEL3 issue tracker; use `Refs tkobayas/drlx-parser#19` to cross-reference
+- MVEL3 commits: `Refs mvel/mvel#423` (use the fully-qualified form because `tkobayas/mvel` (origin) has issues disabled — the bare `#423` would only resolve on `mvel/mvel`)
 
 ---
 
@@ -96,7 +96,7 @@ so existing consumers see no behavior change. Will be overridden in
 generated POJO evaluator classes once VariableAnalyser collects reads
 and MVELTranspiler emits the override.
 
-Refs tkobayas/drlx-parser#19
+Refs mvel/mvel#423
 EOF
 )"
 ```
@@ -141,7 +141,7 @@ git -C /home/tkobayas/usr/work/mvel3-development/mvel add src/test/java/org/mvel
 git -C /home/tkobayas/usr/work/mvel3-development/mvel commit -m "$(cat <<'EOF'
 add ReadPropsFixture POJO for read-properties tests
 
-Refs tkobayas/drlx-parser#19
+Refs mvel/mvel#423
 EOF
 )"
 ```
@@ -373,7 +373,7 @@ MethodCallExpr names alongside its existing used/found sets.
 MVELTranspiler emits a getReadProperties() override on the
 generated class so the compiled Evaluator surfaces the names.
 
-Refs tkobayas/drlx-parser#19
+Refs mvel/mvel#423
 EOF
 )"
 ```
@@ -432,7 +432,7 @@ git -C /home/tkobayas/usr/work/mvel3-development/mvel add src/test/java/org/mvel
 git -C /home/tkobayas/usr/work/mvel3-development/mvel commit -m "$(cat <<'EOF'
 test: cover getter, boolean getter, multi-prop, no-prop cases
 
-Refs tkobayas/drlx-parser#19
+Refs mvel/mvel#423
 EOF
 )"
 ```
@@ -793,12 +793,10 @@ Same for MVEL3 — merge or PR per user preference.
 
 ---
 
-## Open questions to resolve during execution
+## Watch for during execution
 
-These were named in the spec; resolve as you encounter them:
+Spec open questions were resolved before execution (see spec §"Open questions (resolved 2026-04-27)"). The two below remain relevant only as regression-investigation hints:
 
-1. **Aliased property access (`e.salary`)** — if the existing DRLX rule grammar or any test expects this form, the analyser will currently miss it (sees `FieldAccessExpr`, not `NameExpr`). If a regression appears in the full test run at Task 13, extend `VariableAnalyser.visit(FieldAccessExpr)` to collect the field name when scope is a NameExpr matching a declared pattern variable. Add a corresponding test in `ReadPropertiesTest`.
+1. **`FieldAccessExpr` regression.** If a test fails at Task 13 with a "rule doesn't fire on a property modify" symptom, check whether the test uses `e.salary` (current-pattern-aliased) form. The v1 analyser's empty-result branch falls back to AllSetButLastBitMask, which over-listens (safe). Investigate only if a test actually regresses.
 
-2. **Proto round-trip path** — `DrlxRuleAstParseResultTest`'s round-trip tests should pass unchanged because the second `DrlxLambdaConstraint` constructor takes a pre-compiled evaluator that already has its `getReadProperties()` baked in. If round-trip tests fail at Task 13, investigate how the evaluator class is serialized — the override must round-trip too.
-
-3. **MVEL3 issue tracking** — current plan uses `Refs tkobayas/drlx-parser#19` cross-ref in MVEL3 commits. If user wants a dedicated MVEL3 issue, file one before Task 1 and update commit messages.
+2. **Proto round-trip.** `DrlxRuleAstParseResultTest` round-trip tests should pass unchanged. If they fail, investigate `DrlxLambdaCompiler.tryLoadPreCompiled` — the pre-built evaluator class on disk must include the new `getReadProperties()` override, which means the MVEL3 install (Task 7) must complete before any pre-build artifacts are regenerated.
