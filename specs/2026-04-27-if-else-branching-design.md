@@ -2,6 +2,7 @@
 issue: tkobayas/drlx-parser#12
 status: design
 date: 2026-04-27
+depends_on: tkobayas/drlx-parser#23
 ---
 
 # `if` / `else` branching in rule body — design (Form A)
@@ -28,40 +29,48 @@ Branches are LHS pattern blocks; a single trailing `do` consequence is the only 
 
 **Out of scope (split to #22):** Form B — multiple per-branch consequences interleaving patterns and statements (DRLXXXX line 274). Form B requires either rule decomposition or auto-named consequences and is materially harder.
 
+**Prerequisite (now first):** #23 — DRLXXXX `test` construct (`EvalIR` proto + IR + runtime + lambda compiler entry point + user-facing grammar). #12 was originally going to ship `EvalIR` internal-only and split the user-facing grammar to #23. After investigating drools' `EvalExpression` API, we restructured: #23 ships first as the full `test` feature (independently useful, smaller blast radius for the riskiest bridging code), and #12 becomes pure grammar + desugar to existing `or` + `and` + `EvalIR`.
+
 ## Runtime target
 
-Form A maps to existing drools-core constructs only — **no drools-core changes**. The visitor desugars `if`/`else if`/`else` into the already-shipped `or` + `and` + (new internal) eval-style IR:
+Form A maps to existing drools-core constructs only — **no drools-core changes**. The visitor desugars `if`/`else if`/`else` into the already-shipped `or` + `and` + `EvalIR` (from #23):
 
 ```
 if (c1) { B1 } else if (c2) { B2 } else { B3 }
        ↓ (visitor desugar)
 or(
-  and( test(c1),                B1... ),
-  and( test(!c1 && c2),         B2... ),
-  and( test(!c1 && !c2),        B3... ),
+  and( EvalIR(c1),                  B1... ),
+  and( EvalIR(!(c1)), EvalIR(c2),    B2... ),
+  and( EvalIR(!(c1)), EvalIR(!(c2)), B3... ),
 )
 ```
 
-The `test` IR is the planned DRLXXXX equivalent of legacy `eval` (DRLXXXX § "test", line 720). #12 ships the IR + proto + runtime mapping for `test` (internal-only — used by the if/else desugar). User-facing grammar exposure for `test` is split to #23.
+Cumulative guards are split into multiple sequential `EvalIR` nodes (one per prior-condition negation + own condition), per the "multiple `EvalIR`s" decision in plan-phase open items. Simpler to build than compound `&&` expressions, equivalent at runtime.
 
 ## Architecture
 
-**Approach: visitor-level desugar (sugar over `or` + `test`).**
+**Approach: visitor-level desugar (sugar over `or` + `EvalIR`).**
 
-Grammar parses `if`/`else`. Parse-tree → IR step in `DrlxToRuleAstVisitor` immediately desugars to `GroupElementIR(OR)` of `GroupElementIR(AND, [test, body…])` per branch.
+Grammar parses `if`/`else`. Parse-tree → IR step in `DrlxToRuleAstVisitor` immediately desugars to `GroupElementIR(OR)` of `GroupElementIR(AND, [EvalIR, …, body…])` per branch.
 
 What's added by this ticket:
 - Grammar: new `conditionalBranch` production.
 - Visitor: new `buildConditionalBranch` method (the desugar).
-- IR + proto + runtime: new `EvalIR` (the `test` construct from DRLXXXX § "test"). Internal-only — used by the desugar; user-facing grammar exposure is split to #23.
 
-What is *not* added: no first-class IR class for `if/else` itself (downstream sees the desugared `or`-tree); no new `RuleConditionElement` builder for branching; no drools-core changes.
+What is **not** added (lives in #23):
+- `EvalIR` IR class.
+- `EvalParseResult` proto message and round-trip.
+- `EvalCondition` runtime mapping (in `DrlxRuleAstRuntimeBuilder`).
+- `DrlxLambdaCompiler.createEvalExpression`.
+- User-facing `test` grammar.
+
+What is *also* not added: no first-class IR class for `if/else` (downstream sees the desugared `or`-tree); no new `RuleConditionElement` builder for branching; no drools-core changes.
 
 **Trade-off accepted:** the user's `if/else` intent is lost after the visitor. Acceptable today — DRLX has no diagnostic surface that benefits from preserving the original form. If Form B or richer diagnostics need it later, promote to first-class IR then.
 
 ## Components
 
-### 1. Grammar (`DrlxParser.g4`)
+### 1. Grammar (`DrlxParser.g4`, `DrlxLexer.g4`)
 
 Two new tokens: `IF`, `ELSE`. New production added as a `ruleItem` alternative:
 
@@ -72,25 +81,26 @@ ruleItem
     | existsElement ','
     | andElement ','
     | orElement ','
-    | conditionalBranch ','     // NEW
+    | testElement ','           // shipped by #23
+    | conditionalBranch ','     // NEW (#12)
     | ruleConsequence
     ;
 
 conditionalBranch
-    : IF LPAREN expression RPAREN branchBody
-      ( ELSE IF LPAREN expression RPAREN branchBody )*
+    : IF '(' expression ')' branchBody
+      ( ELSE IF '(' expression ')' branchBody )*
       ( ELSE branchBody )?
     ;
 
 branchBody
-    : LBRACE ruleItem* RBRACE
+    : '{' ruleItem* '}'
     ;
 ```
 
 Notes:
-- `branchBody` reuses `ruleItem*` — branches accept patterns, group elements, and nested `if/else` automatically. Implicit AND between items handled by visitor.
+- `branchBody` reuses `ruleItem*` — branches accept patterns, group elements, nested `if/else`, and `test` automatically. Implicit AND between items handled by visitor.
 - Trailing `,` after the close brace per DRLXXXX convention (uniform with all CE terminators).
-- `expression` is the existing DRLX expression rule (same one used inside `[…]` constraints).
+- `expression` is the existing DRLX expression rule (`DrlxParser.g4:150`, inherited from MVEL3).
 - `else if` is grammar-level chaining (the `( ELSE IF … )*` clause), not lexer-level — keeps the AST flat (a branch list) instead of right-nested else-trees.
 
 ### 2. Parse-tree → IR desugar (`DrlxToRuleAstVisitor`)
@@ -99,40 +109,17 @@ New method `buildConditionalBranch(ConditionalBranchContext)` that returns a `Gr
 
 1. Collect branches in document order: `(c1, B1), (c2, B2), …, (cn, Bn)`. Final `else`, if present, contributes `(null, Bfinal)`.
 2. For each branch `(ci, Bi)` at index `i`:
-   - Compute the cumulative guard: `(NOT c1) AND (NOT c2) AND … AND (NOT c_{i-1}) AND ci` (final-else branch omits the trailing `ci` term).
-   - Emit `GroupElementIR(AND, [ EvalIR(guard), …recursive build of Bi… ])`.
+   - Emit one `EvalIR("!(prior_j)")` for each prior condition, in order (j = 1..i-1).
+   - Then emit `EvalIR(ci)` (own condition; omitted for the final-else branch).
+   - Then recursively expand `Bi` as additional AND children.
+   - Wrap all of the above in `GroupElementIR(AND, [...])`.
 3. Wrap all branch ANDs in a single `GroupElementIR(OR)`.
 
-Recursive expansion of `Bi` reuses existing visitor methods, so nested `not`/`exists`/`and`/`or` and nested `if/else` are handled by recursion without special cases.
+Recursive expansion of `Bi` reuses existing visitor methods (`buildPattern`, `buildNotElement`, etc.), so nested `not`/`exists`/`and`/`or`, nested `if/else`, and `test` are handled by recursion without special cases.
 
-### 3. `test` (eval) IR — new internal construct
+`EvalIR.referencedBindings` is populated by extracting identifiers from the expression text (regex over `\b[A-Za-z_][A-Za-z0-9_]*\b`); the runtime builder filters them against the live `boundVariables` map (those that don't resolve are silently dropped, matching the existing `findReferencedBindings` behavior in `DrlxRuleAstRuntimeBuilder`).
 
-Three small additions, used internally by the if/else desugar; **not exposed in user grammar** in this ticket.
-
-**a. Proto message** (`drlx_rule_ast.proto`):
-
-```protobuf
-message EvalParseResult {
-  string expression = 1;        // raw expression text
-  repeated string referenced_bindings = 2;  // declarations consumed by the expression
-}
-
-message LhsItemParseResult {
-  oneof kind {
-    PatternParseResult pattern = 1;
-    GroupElementParseResult group = 2;
-    EvalParseResult eval = 3;   // NEW
-  }
-}
-```
-
-**b. IR class** (`EvalIR`): mirrors `PatternIR`'s shape — holds the expression string and the set of binding names it references. Implements the same `LhsItemIR` interface so it slots into `GroupElementIR.children`.
-
-**c. Runtime builder** (`DrlxRuleAstRuntimeBuilder`): when a branch's children include an `EvalIR`, emit drools-model `D.expr(declarations, lambda)` (the executable-model API for eval-style guards). The lambda is generated from the expression string the same way `DrlxLambdaCompiler` already generates lambdas for pattern constraints, except it returns `boolean` and takes the referenced bindings as input.
-
-A standalone unit test (`EvalIRBuilderTest`) verifies the runtime path independently of if/else, since the if/else flow is the only user of this IR until #23 lands.
-
-### 4. Bindings & scope
+### 3. Bindings & scope
 
 Inherit existing `or` semantics — no new logic in #12:
 
@@ -141,21 +128,36 @@ Inherit existing `or` semantics — no new logic in #12:
 - **Outer-scope bindings** — guards and branch bodies freely reference bindings from preceding rule items. The `EvalIR` carries those bindings as `referencedBindings`.
 - **Branch-local bindings** — bindings introduced inside a branch but not in others are not visible post-block (standard `or` rule).
 
-### 5. Edge cases
+### 4. Edge cases
 
 | Case | Behavior |
 |---|---|
-| `if (cond) { /a }` (no else) | Desugars to `or(and(test(cond), /a))`. Rule fires only when `cond` matches. No implicit else. |
+| `if (cond) { /a }` (no else) | Desugars to `or(and(EvalIR(cond), /a))`. Rule fires only when `cond` matches. No implicit else. |
 | `if (c1) {…} else if (c2) {…}` (no final else) | N branches, cumulative guards. Rule doesn't fire if no branch matches. |
 | Empty branch `if (cond) { }` | Reject at parse-tree → IR step. Error: `"empty branch body"`. |
 | Branch with only group element `if (cond) { not(/a) }` | Allowed; guard `EvalIR` is the first child of the AND-group, the `not` IR follows. |
 | Nested `if/else` inside a branch | Allowed; recursion handled naturally. Guards compose: outer's AND wraps inner's OR. |
 | Side-effecting guard expression | No special guarantee — same as any DRLX constraint expression. Out of scope. |
-| `test` IR with no referenced bindings | Valid — pure boolean expression like `test true`. Lambda has no inputs. |
+
+### 5. Property-reactivity limitation
+
+`org.drools.base.rule.EvalCondition.isPatternScopeDelimiter()` returns `true`, meaning **`EvalCondition` is a hard boundary for property-reactivity scope**. Practical consequence:
+
+```drlx
+var c : /customers,
+if (c.creditRating == Rating.LOW) { /* … */ } else { /* … */ },
+do { /* … */ }
+```
+
+The `c.creditRating` reference inside the if-guard does **not** add `creditRating` to the customer pattern's listened-property mask. If a customer's `creditRating` changes from `HIGH` → `LOW`, the engine will not automatically re-evaluate the rule.
+
+**Documented limitation in #12.** Users who need property-reactive guards on outer-scope bindings must add explicit watches via DRLX's watch-list syntax on the relevant pattern (e.g., `var c : /customers[][creditRating], if (c.creditRating == Rating.LOW) { … }`).
+
+A follow-up issue may propagate guard-expression property reads back into preceding patterns automatically (similar in spirit to #19's `Evaluator.getReadProperties()` for pattern constraints). Out of scope for #12.
 
 ## Testing
 
-New test class `IfElseTest` in `drlx-parser-core/src/test/java/…`, mirroring `OrTest` / `NotTest`:
+New test classes in `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/`:
 
 **Parse-level (`IfElseParseTest`):**
 - `if {…}` only
@@ -164,37 +166,34 @@ New test class `IfElseTest` in `drlx-parser-core/src/test/java/…`, mirroring `
 - Nested if/else inside branch
 - Trailing `,` enforced
 - Parse failures: missing `{`, empty branch
-
-**Round-trip:** Verify desugared IR serializes/deserializes correctly via proto.
+- IR-shape assertion: verify the desugared `OR(AND(EvalIR, …, body), …)` structure
 
 **Runtime semantics (`IfElseTest`, using `TrackingAgendaEventListener`):**
-1. Binary if/else — DRLXXXX A-form example.
+1. Binary if/else — DRLXXXX A-form example (LOW/HIGH, LOW/HIGH cases).
 2. Else-if chain — three-rating example.
 3. No-final-else — rule does not fire when no branch's guard holds.
 4. Same-name bindings across branches — consequence reads the bound name regardless of branch.
-5. Asymmetric bindings referenced post-block — compile error.
-6. Outer-scope binding referenced in guard.
-7. Multi-element branch — implicit AND, cross-pattern join inside branch.
-8. Nested if/else.
-9. Group element inside branch — e.g., `not(/widget)` plus a pattern.
-10. Property-reactive interaction — watch lists propagate through branch patterns.
+5. Multi-element branch — implicit AND, cross-pattern join inside branch.
+6. Nested if/else.
+7. Group element inside branch — e.g., `not(/widget)` plus a pattern.
+8. Property reactivity with explicit watch list — verifies that the documented workaround works.
 
-**`EvalIR` direct (`EvalIRBuilderTest`):**
-- Construct an `EvalIR` programmatically (no grammar), build a rule, fire — verifies the runtime mapping in isolation.
+Target: ~8–10 runtime tests + parse tests. Smaller than the original #12 scope because EvalIR-direct tests and EvalExpression bridging tests live with #23.
 
-Target: ~10–12 runtime tests + parse tests. Volume comparable to the and/or spec round.
+## Resolved plan-phase items
 
-## Plan-phase open items
-
-- **`expression` reuse** — confirm the existing `expression` grammar rule is fully composable inside `IF LPAREN expression RPAREN` without left-recursion / ambiguity issues. Verify with a small ANTLR test before committing the grammar.
-- **`EvalIR` lambda generation** — pick the cleanest reuse of `DrlxLambdaCompiler` for boolean-returning lambdas. Likely a new entry point that takes the expression text and a binding-set, returns a `Function<…, Boolean>` builder fragment.
-- **Guard cumulation expression form** — desugar emits cumulative `!c1 && !c2 && c3` as one expression, or splits into multiple chained `EvalIR` nodes (`test(!c1), test(!c2), test(c3)`)? Multiple `EvalIR`s are simpler to build (no expression-tree rewriting) and equivalent at runtime; pick this in the plan unless a benchmark shows a meaningful cost.
-- **`else if` token strategy** — emit `ELSE IF` as two separate tokens (current grammar) or introduce an `ELSE_IF` lexer rule? Two tokens is simpler; revisit only if grammar disambiguation needs it.
+- **`expression` reuse:** verified — `DrlxParser.g4:150` defines `expression` (inherited from MVEL3), already used by `drlxExpression`. Composes inside `IF '(' expression ')'` without ambiguity.
+- **Guard cumulation form:** decided — split into multiple sequential `EvalIR`s (one per prior-condition negation + own condition). Simpler than compound `&&`. Equivalent at runtime since each `EvalCondition` becomes its own AND child.
+- **`else if` token strategy:** decided — two separate tokens (`ELSE IF`), grammar-level chaining via `( ELSE IF … )*` repetition.
+- **`EvalIR` runtime mapping:** moved to #23 (was item #2's `Plan-phase open items` — "lambda generation"). Verified API findings:
+  - `EvalExpression` interface: `boolean evaluate(BaseTuple, Declaration[], ValueResolver, Object) throws Exception`, plus `Object createContext()`, `replaceDeclaration`, `clone`.
+  - Tuple value extraction: `tuple.getObject(declaration)` (BaseTuple line 51).
+  - MVEL3 compile pattern: mirror `DrlxLambdaCompiler.createBatchBetaConstraint` — `MVEL.map(...).out(Boolean.class).expression(...)` with `LambdaHandle`/`PendingLambda` deferred-resolution flow.
 
 ## Related issues
 
 - **#22** — Form B (multi-consequence `if/else`). Requires rule decomposition or auto-named consequences. Postponed.
-- **#23** — Expose `test` as a user-facing `ruleItem`. IR + runtime ship in #12; this adds grammar + visitor + tests. ~½ day.
+- **#23** — DRLXXXX `test` construct (now expanded scope: ships full `EvalIR` infra + user-facing grammar). Prerequisite for #12.
 
 ## References
 
@@ -203,3 +202,4 @@ Target: ~10–12 runtime tests + parse tests. Volume comparable to the and/or sp
 - And/Or spec — `specs/2026-04-23-and-or-design.md`
 - Group-element infrastructure — `specs/2026-04-21-group-element-and-not-design.md`
 - Drools-core `ConditionalBranch` (NOT used — Form A only) — `drools-base/src/main/java/org/drools/base/rule/ConditionalBranch.java`
+- `EvalCondition.isPatternScopeDelimiter` — `drools-base/src/main/java/org/drools/base/rule/EvalCondition.java:199-201`
