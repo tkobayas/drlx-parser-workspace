@@ -8,6 +8,8 @@
 Run `add-dir /home/tkobayas/usr/work/mvel3-development/drlx-parser` before any other work.
 Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 
+**If MVEL3 changes are needed:** also `add-dir /home/tkobayas/usr/work/mvel3-development/mvel`. DRLX consumes MVEL3 via `3.0.0-SNAPSHOT`, so any MVEL3 modification must be `mvn install`-ed locally before DRLX picks it up.
+
 ## Artifact Locations
 
 | Skill | Writes to |
