@@ -26,7 +26,7 @@ rule R1 {
 
 Branches are LHS pattern blocks; a single trailing `do` consequence is the only RHS.
 
-**Out of scope (split to a separate issue):** Form B — multiple per-branch consequences interleaving patterns and statements (DRLXXXX line 274). Form B requires either rule decomposition or auto-named consequences and is materially harder; tracked separately.
+**Out of scope (split to #22):** Form B — multiple per-branch consequences interleaving patterns and statements (DRLXXXX line 274). Form B requires either rule decomposition or auto-named consequences and is materially harder.
 
 ## Runtime target
 
@@ -42,7 +42,7 @@ or(
 )
 ```
 
-The `test` IR is the planned DRLXXXX equivalent of legacy `eval` (DRLXXXX § "test", line 720). #12 ships the IR + proto + runtime mapping for `test` (internal-only — used by the if/else desugar). User-facing grammar exposure for `test` is split to a sibling issue.
+The `test` IR is the planned DRLXXXX equivalent of legacy `eval` (DRLXXXX § "test", line 720). #12 ships the IR + proto + runtime mapping for `test` (internal-only — used by the if/else desugar). User-facing grammar exposure for `test` is split to #23.
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Grammar parses `if`/`else`. Parse-tree → IR step in `DrlxToRuleAstVisitor` imm
 What's added by this ticket:
 - Grammar: new `conditionalBranch` production.
 - Visitor: new `buildConditionalBranch` method (the desugar).
-- IR + proto + runtime: new `EvalIR` (the `test` construct from DRLXXXX § "test"). Internal-only — used by the desugar; user-facing grammar exposure is split to a sibling issue.
+- IR + proto + runtime: new `EvalIR` (the `test` construct from DRLXXXX § "test"). Internal-only — used by the desugar; user-facing grammar exposure is split to #23.
 
 What is *not* added: no first-class IR class for `if/else` itself (downstream sees the desugared `or`-tree); no new `RuleConditionElement` builder for branching; no drools-core changes.
 
@@ -130,7 +130,7 @@ message LhsItemParseResult {
 
 **c. Runtime builder** (`DrlxRuleAstRuntimeBuilder`): when a branch's children include an `EvalIR`, emit drools-model `D.expr(declarations, lambda)` (the executable-model API for eval-style guards). The lambda is generated from the expression string the same way `DrlxLambdaCompiler` already generates lambdas for pattern constraints, except it returns `boolean` and takes the referenced bindings as input.
 
-A standalone unit test (`EvalIRBuilderTest`) verifies the runtime path independently of if/else, since the if/else flow is the only user of this IR until the sibling `test`-grammar ticket lands.
+A standalone unit test (`EvalIRBuilderTest`) verifies the runtime path independently of if/else, since the if/else flow is the only user of this IR until #23 lands.
 
 ### 4. Bindings & scope
 
@@ -191,9 +191,10 @@ Target: ~10–12 runtime tests + parse tests. Volume comparable to the and/or sp
 - **Guard cumulation expression form** — desugar emits cumulative `!c1 && !c2 && c3` as one expression, or splits into multiple chained `EvalIR` nodes (`test(!c1), test(!c2), test(c3)`)? Multiple `EvalIR`s are simpler to build (no expression-tree rewriting) and equivalent at runtime; pick this in the plan unless a benchmark shows a meaningful cost.
 - **`else if` token strategy** — emit `ELSE IF` as two separate tokens (current grammar) or introduce an `ELSE_IF` lexer rule? Two tokens is simpler; revisit only if grammar disambiguation needs it.
 
-## Sibling issue (to open)
+## Related issues
 
-`test` user-facing grammar — expose `test <expression>` as a `ruleItem` for direct use in rule bodies. IR + runtime already shipped by #12; this ticket adds the grammar + visitor branch + parse and runtime tests. Small (~½ day).
+- **#22** — Form B (multi-consequence `if/else`). Requires rule decomposition or auto-named consequences. Postponed.
+- **#23** — Expose `test` as a user-facing `ruleItem`. IR + runtime ship in #12; this adds grammar + visitor + tests. ~½ day.
 
 ## References
 
