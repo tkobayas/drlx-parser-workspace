@@ -2,36 +2,37 @@
 
 ## Session goals (done)
 
-1. ✅ #19 closed — `DrlxLambdaConstraint.getListenedPropertyMask` overrides via new `Evaluator.getReadProperties()`. Two-repo: MVEL3 (`mvel3-read-props`, merged upstream as [mvel/mvel#423](https://github.com/mvel/mvel/issues/423)), DRLX ([PR #21](https://github.com/tkobayas/drlx-parser/pull/21), merged).
-2. ✅ Spec + plan committed; both have a "Deviations during implementation" addendum capturing what shipped vs. what was designed.
-3. ✅ Blog entry `tk01` for 2026-04-27 (`constraint-mask-deviations`).
-4. ✅ CLAUDE.md updated with MVEL3 add-dir note + SNAPSHOT install rule.
+1. ✅ **#23 closed** — DRLXXXX `test` construct shipped end-to-end (proto + IR + lambda compiler + runtime + grammar + visitor + tests). 9 commits on `origin/main` (`a1e3101..511696c`).
+2. ✅ Spec + plan for **#12 restructured** — depends on #23 (now landed); new slimmer 10-task plan replaces the original 14-task one.
+3. ✅ Blog `tk02` written: `blog/2026-04-27-tk02-test-before-if-else.md`.
+4. ✅ Property-reactivity finding: DRLX defaults to `PropertySpecificOption.ALWAYS`; `EvalCondition.isPatternScopeDelimiter()` is moot. Spec for #12 updated.
 
 ## Current state
 
 ### Test suite
-- **111 tests passing, 0 failures.** Was 108 → +3 condition+watch-list cases in `PropertyReactiveWatchListTest`.
-- MVEL3 full suite: 720 passing.
+- **DRLX: 125 passing, 0 failures.** Was 111 → +14 (#23: model 2, parse-result 2, eval-expression 3, eval-IR-builder 1, test-element-parse 2, test-element runtime 4).
+- MVEL3 full suite: unchanged, 720 passing.
 
 ### GitHub issues
-- `#13` CLOSED (last session). `#19` CLOSED (this session). `mvel/mvel#423` MERGED upstream.
-- Next candidates (open): `#12` if/else branching, `#16` RuleIR proto experiment.
+- `#23` CLOSED this session (test construct).
+- `#22` OPEN (Form B if/else — multi-consequence; postponed).
+- `#12` OPEN, **NEXT** (Form A if/else — plan ready, depends on shipped #23).
+- `#16` still open (RuleIR proto experiment).
 
 ### Migration policy
 *Unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 ## Immediate next action
 
-Decide next ticket with user. Two-way choice:
-- **#12 if/else branching** — grammar work, larger scope.
-- **#16 RuleIR proto experiment** — infrastructure refactor.
+Start **#12** (if/else, Form A). Plan: `plans/2026-04-27-if-else-branching-implementation.md`. 10 tasks, pure grammar + visitor desugar onto the `EvalIR` infrastructure shipped in #23. No risky bridging code remaining. Property-reactivity Task 9 verifies natural behaviour (no workaround needed).
 
 ## Gotchas (new this session)
 
-- **`MVELCompiler.registerAndRename` uses `findFirst(MethodDeclaration.class)`** (`MVELCompiler.java:238`). If you add methods to a generated MVEL3 evaluator class, emit them *after* the eval method (after `MVELToJavaRewriter.rewriteChildren`). Otherwise `LambdaUtils.createLambdaKeyFromMethodDeclaration` operates on the wrong method and fails with `StringIndexOutOfBoundsException`.
-- **MVEL3's symbol resolver rejects bare getter calls in user expressions.** `getBasePay()` doesn't compile even with declarations populated — drools-model uses `_this.getX()` form because that's produced by *its own rewriter*, not user-written. Don't assume drools-model expression shapes work as MVEL3 input.
-- **DRLX puts every JavaBeans property in MVEL3's `available` set.** `DrlxLambdaCompiler.extractDeclarations:53-69` registers each property as a `Declaration`. Any analyser logic that branches on `available.contains(name)` will treat all property reads as known declarations — design accordingly.
-- **JavaParser's `FieldAccessExpr.name` is a `SimpleName`, not a `NameExpr`.** Visitors that visit `NameExpr` correctly skip the field-name part of `p.name`. Cross-pattern join (`name == p.name`) handling falls out for free.
+- **DRLX uses `PropertySpecificOption.ALWAYS`** (`DrlxRuleAstRuntimeBuilder.java:105`). All pattern properties watched by default; `EvalCondition.isPatternScopeDelimiter() == true` does NOT inhibit re-evaluation in this configuration. If DRLX ever switches to `ALLOWED` mode, eval guards' property reads need explicit propagation (similar to #19).
+- **`EvaluatorSink` already exists** at `org.drools.drlx.builder.EvaluatorSink`. Every lambda-carrying class (`DrlxLambdaConstraint`, `DrlxLambdaBetaConstraint`, `DrlxLambdaConsequence`, now `DrlxEvalExpression`) implements it. `compileBatch(...)` iterates `pendingLambdas` calling `target.bindEvaluator(resolved)`.
+- **`EvalExpression.evaluate` signature**: `(BaseTuple, Declaration[], ValueResolver, Object) throws Exception` — 4 args, ValueResolver from `org.drools.base.base`. Tuple value extraction: `tuple.get(decl).getObject()` (canonical) or `tuple.getObject(decl)` (simpler, works for binding-decl).
+- **`org.mvel3.Evaluator` is NOT a functional interface** — has multiple methods. Lambda-style instantiation fails at compile time.
+- **Top-level parser entry**: `parser.drlxCompilationUnit()` returns `DrlxCompilationUnitContext` (DRLX-specific). `parser.compilationUnit()` returns the inherited Java/MVEL3 `CompilationUnitContext` which has no `ruleDeclaration()` accessor.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -39,12 +40,11 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #19 spec | `specs/2026-04-27-constraint-mask-design.md` |
-| #19 plan | `plans/2026-04-27-constraint-mask-implementation.md` |
-| Latest blog entry | `blog/2026-04-27-tk01-constraint-mask-deviations.md` |
-| MVEL3 source | `/home/tkobayas/usr/work/mvel3-development/mvel` (add-dir if MVEL3 changes needed) |
-| DRLX PR for #19 | https://github.com/tkobayas/drlx-parser/pull/21 |
-| MVEL3 PR | mvel/mvel#423 (merged) |
+| #12 spec (revised) | `specs/2026-04-27-if-else-branching-design.md` |
+| #12 plan (slimmer, NEXT) | `plans/2026-04-27-if-else-branching-implementation.md` |
+| #23 plan (DONE — for reference) | `plans/2026-04-27-test-construct-implementation.md` |
+| Latest blog entry | `blog/2026-04-27-tk02-test-before-if-else.md` |
+| #23 implementation commits | `git -C ~/usr/work/mvel3-development/drlx-parser log a1e3101..511696c` |
 
 ## Key commands
 
