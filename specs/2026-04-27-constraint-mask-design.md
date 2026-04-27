@@ -166,3 +166,17 @@ Runtime alpha-mask plumbing:
 - Three new tests in `PropertyReactiveWatchListTest` pass: condition + watch list combinations correctly bound the alpha mask.
 - New MVEL3 unit tests for `getReadProperties()` pass.
 - The `// MVP scope:` limitation comment in `PropertyReactiveWatchListTest` can be removed.
+
+---
+
+## Deviations during implementation (added 2026-04-27)
+
+What actually shipped differs from this spec in three places. The MVEL3 work is merged via [mvel/mvel#423](https://github.com/mvel/mvel/issues/423); DRLX work is on branch `19-constraint-mask` (closes #19).
+
+1. **Analyser logic simpler than designed.** This spec proposed gating `readProperties` collection on whether the name is in `available` (free identifiers only). In practice DRLX's `DrlxLambdaCompiler.extractDeclarations` registers *every* JavaBeans property of the pattern type as a `Declaration`, so all property names land in `available` — the gate would have suppressed everything. **As shipped:** `VariableAnalyser` records every `NameExpr` / `DrlNameExpr` it visits. The consumer (`DrlxLambdaConstraint.getListenedPropertyMask`) filters via `settableProperties.indexOf(prop) >= 0`, which already drops cross-pattern bindings and other non-property identifiers. This actually matches the spec's stated contract more faithfully ("MVEL3 returns candidate names — consumers filter against the actual settable-property set").
+
+2. **`MethodCallExpr` getter handling dropped.** Spec proposed decoding no-arg/no-scope getter calls (`getBasePay()` → `basePay`, `isActive()` → `active`). MVEL3's symbol resolver rejects bare getter calls in user expressions before `VariableAnalyser` runs, so the branch was unreachable from real consumers. **As shipped:** branch removed; only `NameExpr`/`DrlNameExpr` are collected. MVEL3 test count dropped from 5 to 3 (`bareNameExpr_collectsProperty`, `multipleProperties_collectsAll`, `noProperties_returnsEmpty`).
+
+3. **Codegen ordering.** Spec implied `getReadProperties()` could be emitted at any point after the analyser runs. In practice `MVELCompiler.registerAndRename` calls `unit.findFirst(MethodDeclaration.class)` to pick up the eval method, so emitting `getReadProperties` *before* the eval method makes `findFirst` return the wrong one. **As shipped:** override emitted after the rewrite pass, after the eval method has been built into the class.
+
+Final test counts: full MVEL3 suite 720 passing (0 failures); full DRLX suite 111 passing (was 108, +3).

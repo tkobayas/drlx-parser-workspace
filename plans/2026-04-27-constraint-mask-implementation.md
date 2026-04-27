@@ -800,3 +800,24 @@ Spec open questions were resolved before execution (see spec §"Open questions (
 1. **`FieldAccessExpr` regression.** If a test fails at Task 13 with a "rule doesn't fire on a property modify" symptom, check whether the test uses `e.salary` (current-pattern-aliased) form. The v1 analyser's empty-result branch falls back to AllSetButLastBitMask, which over-listens (safe). Investigate only if a test actually regresses.
 
 2. **Proto round-trip.** `DrlxRuleAstParseResultTest` round-trip tests should pass unchanged. If they fail, investigate `DrlxLambdaCompiler.tryLoadPreCompiled` — the pre-built evaluator class on disk must include the new `getReadProperties()` override, which means the MVEL3 install (Task 7) must complete before any pre-build artifacts are regenerated.
+
+---
+
+## Execution outcome (added 2026-04-27)
+
+All 14 tasks completed. Three deviations from the plan-as-written — see the spec's "Deviations during implementation" section for the full rationale:
+
+1. **Task 4 — `VariableAnalyser`:** The `if (available.contains(name))` gate in the proposed code was dropped. `readProperties` collects every `NameExpr` / `DrlNameExpr`. Consumer-side filtering via `settableProperties` handles non-property identifiers.
+
+2. **Task 4 — `MethodCallExpr` branch:** Removed entirely. MVEL3 rejects bare `getX()` calls in user expressions, so the branch was unreachable. The `getter2property` helper was removed.
+
+3. **Task 5 — Codegen ordering:** `emitGetReadPropertiesOverride` is called *after* the rewrite pass (after `method.setBody(...)` and `MVELToJavaRewriter`), not before the eval method is built. Required because `MVELCompiler.registerAndRename` uses `findFirst(MethodDeclaration.class)`.
+
+4. **Task 6 — Test count:** 3 cases (`bareNameExpr_collectsProperty`, `multipleProperties_collectsAll`, `noProperties_returnsEmpty`) instead of the planned 5. The two getter-form tests were removed alongside the analyser branch.
+
+5. **Task 14 — Branch fates:**
+   - MVEL3 branch `mvel3-read-props` merged upstream via [mvel/mvel#423](https://github.com/mvel/mvel/issues/423).
+   - DRLX branch `19-constraint-mask` pushed to `origin`; PR open at `https://github.com/tkobayas/drlx-parser/pull/new/19-constraint-mask`.
+   - Issue [tkobayas/drlx-parser#19](https://github.com/tkobayas/drlx-parser/issues/19) closed with summary.
+
+Final test counts: full MVEL3 suite 720 passing (0 failures); full DRLX suite 111 passing (was 108, +3).
