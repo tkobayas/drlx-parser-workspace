@@ -13,3 +13,4 @@
 | [2026-04-24-tk03-watch-list-half-shipped.md](2026-04-24-tk03-watch-list-half-shipped.md) | 2026-04-24 | Watch list — half shipped, and why |
 | [2026-04-27-tk01-constraint-mask-deviations.md](2026-04-27-tk01-constraint-mask-deviations.md) | 2026-04-27 | Constraint mask landed — three deviations the plan didn't see |
 | [2026-04-27-tk02-test-before-if-else.md](2026-04-27-tk02-test-before-if-else.md) | 2026-04-27 | test before if/else — risk-driven ticket restructure |
+| [2026-04-28-tk01-if-else-exposed-23-gaps.md](2026-04-28-tk01-if-else-exposed-23-gaps.md) | 2026-04-28 | if/else exposed #23's gaps — five layers under the easy plan |
