@@ -24,7 +24,7 @@ Candidates for enhancing DrlxCompiler to cover more DRLX syntax, prioritized by 
 | # | Feature | Key challenge |
 |---|---------|---------------|
 | 8 | **`or()`/`and()` group CEs** | Requires subnetwork support and variable scoping |
-| 9 | **`if`/`else` branching in rule body** | Conditional elements within rule body |
+| 9 | ~~**`if`/`else` branching in rule body** (Form A — single trailing consequence)~~ — **IMPLEMENTED in #12**. Form B (per-branch consequences) tracked in #22. | Conditional elements within rule body |
 | 10 | **Property reactive** (`[][basePay, bonusPay]`) | Second `[]` block for watch list |
 
 ## Notes
