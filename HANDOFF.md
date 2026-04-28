@@ -2,35 +2,31 @@
 
 ## Session goals (done)
 
-1. ✅ **#12 closed** — DRLXXXX `if/else` Form A shipped end-to-end (grammar + visitor desugar + 5 runtime gap-fixes + 10 new runtime tests). 9 commits on `origin/main` (`511696c..8f37d23`).
-2. ✅ Workspace spec updated (`IMPLEMENT_SYNTAX_CANDIDATES.md` row 9 marked implemented).
-3. ✅ Blog `tk01` written: `blog/2026-04-28-tk01-if-else-exposed-23-gaps.md`.
+1. ✅ **mvel/mvel#425 fixed and merged upstream** — `MVELToJavaRewriter` `UnaryExpr` case now recurses into the operand for `!`, `-prop`, `~prop`, etc. Two regression tests added in MVEL3. Branch `mvel-425` (`6b9fc6ec`).
+2. ✅ **DRLX `(cond) == false` workaround reverted** — both sites in `DrlxToRuleAstVisitor.buildIfElse` now use natural `!(prior)`; `IfElseParseTest` assertions updated. Commit `8bcf5c0` on `origin/main`. Closes #24.
+3. ✅ Blog `tk02` written: `blog/2026-04-28-tk02-round-trip-on-mvel-425.md`.
 
 ## Current state
 
 ### Test suite
-- **DRLX: 141 passing, 0 failures.** Was 125 → +16 (6 IfElseParse + 10 IfElse).
-- MVEL3 full suite: not exercised this session.
+- **DRLX: 141 passing, 0 failures.** Unchanged.
+- **MVEL3: 722 passing, 0 failures** (117 skipped, pre-existing).
 
 ### GitHub issues
-- `#12` CLOSED this session (if/else Form A).
-- `#22` OPEN (Form B if/else — multi-consequence; natural next).
-- `#16` still open (RuleIR proto experiment).
+- `mvel/mvel#425` CLOSED upstream.
+- DRLX `#24` CLOSED this session (workaround revert).
+- DRLX open: `#22` Form B if/else, `#16` RuleIR proto, `#6` rule-level annotations epic, `#5` LSP positional bug.
 
 ### Migration policy
 *Unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 ## Immediate next action
 
-User-pick. Two open tickets remain: **#22** (Form B if/else — per-branch consequences, will need a new IR + multi-consequence rule shape; non-trivial) and **#16** (RuleIR proto experiment). Neither has a current spec/plan in `specs/` or `plans/`. Recommend brainstorming whichever lands first.
+User-pick. **#22** (Form B if/else — per-branch consequences) is the natural successor to #12 / today's revert; needs new IR shape and a brainstorm — no spec/plan yet. Alternatives: **#16** (RuleIR proto experiment) or **#5** (LSP positional bug).
 
-## Gotchas (new this session)
+## Gotchas (resolved this session)
 
-- **MVEL3 doesn't bean-rewrite property access inside `!(...)`** — `!(c.field == X)` keeps `c.field` as direct field access; private fields fail Java compilation. Workaround: `(expr) == false`. Visitor's cumulative-guard negation uses this form (`DrlxToRuleAstVisitor.java:273`). Upstream tracker: [mvel/mvel#425](https://github.com/mvel/mvel/issues/425). If/when fixed upstream, the workaround can be reverted.
-- **Drools' `LogicTransformer` clones constraints during OR-tree expansion** — deferred-compile constraints (declarations is null until `bindEvaluator` fires) NPE on the eager-init clone path. `DrlxLambdaConstraint.clone()` and `DrlxLambdaBetaConstraint.clone()` now use the pre-compiled-evaluator constructor and reuse the bound evaluator (MVEL3 evaluators are stateless). Triggered only when `OR(AND(...))` appears in LHS — Form A is the first feature to produce this shape.
-- **`MVEL.map()`/`MVEL.pojo()` builders need explicit `.imports(...)`** — even same-package types don't resolve without it. `DrlxLambdaCompiler.addImports()` seeds from `parseResult.imports()`; eval/consequence/pattern batch builders all pass it through. Without this, enum constants and external types in expressions fail with `Unsolved symbol`.
-- **`getTypeMap` must walk nested `GroupElement` children** — consequence-side declaration lookup for patterns inside OR/AND branches (Form A's shape). `collectPatternTypes` is now recursive (`DrlxLambdaCompiler.java:421`).
-- **`rulePattern : boundOopath ','` requires trailing comma** — branch bodies introduced a separate `branchItem` production with comma-as-separator (no trailing) so single-pattern branches don't need a `,` after `boundOopath`.
+- **MVEL3 doesn't bean-rewrite inside `!(...)`** — RESOLVED upstream. `MVELToJavaRewriter.rewriteNode` `UnaryExpr` case now recurses into the operand for any operator/operand combination. The DRLX workaround `(cond) == false` is gone — `!(prior)` is used directly in `DrlxToRuleAstVisitor.buildIfElse`. Drop this from the running list.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -38,10 +34,10 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #12 spec (DONE — for reference) | `specs/2026-04-27-if-else-branching-design.md` |
-| #12 plan (DONE — for reference) | `plans/2026-04-27-if-else-branching-implementation.md` |
-| Latest blog entry | `blog/2026-04-28-tk01-if-else-exposed-23-gaps.md` |
-| #12 implementation commits | `git -C ~/usr/work/mvel3-development/drlx-parser log 511696c..8f37d23` |
+| Today's blog entry | `blog/2026-04-28-tk02-round-trip-on-mvel-425.md` |
+| Yesterday's blog (context) | `blog/2026-04-28-tk01-if-else-exposed-23-gaps.md` |
+| MVEL3 fix commit | `git -C ~/usr/work/mvel3-development/mvel show 6b9fc6ec` |
+| DRLX revert commit | `git -C ~/usr/work/mvel3-development/drlx-parser show 8bcf5c0` |
 | Syntax candidates (workspace) | `specs/IMPLEMENT_SYNTAX_CANDIDATES.md` |
 
 ## Key commands

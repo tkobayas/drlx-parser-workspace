@@ -14,3 +14,4 @@
 | [2026-04-27-tk01-constraint-mask-deviations.md](2026-04-27-tk01-constraint-mask-deviations.md) | 2026-04-27 | Constraint mask landed — three deviations the plan didn't see |
 | [2026-04-27-tk02-test-before-if-else.md](2026-04-27-tk02-test-before-if-else.md) | 2026-04-27 | test before if/else — risk-driven ticket restructure |
 | [2026-04-28-tk01-if-else-exposed-23-gaps.md](2026-04-28-tk01-if-else-exposed-23-gaps.md) | 2026-04-28 | if/else exposed #23's gaps — five layers under the easy plan |
+| [2026-04-28-tk02-round-trip-on-mvel-425.md](2026-04-28-tk02-round-trip-on-mvel-425.md) | 2026-04-28 | round-trip on mvel#425 — workaround out, upstream in |
