@@ -2,21 +2,19 @@
 
 ## Session goals (done)
 
-1. ✅ **#23 closed** — DRLXXXX `test` construct shipped end-to-end (proto + IR + lambda compiler + runtime + grammar + visitor + tests). 9 commits on `origin/main` (`a1e3101..511696c`).
-2. ✅ Spec + plan for **#12 restructured** — depends on #23 (now landed); new slimmer 10-task plan replaces the original 14-task one.
-3. ✅ Blog `tk02` written: `blog/2026-04-27-tk02-test-before-if-else.md`.
-4. ✅ Property-reactivity finding: DRLX defaults to `PropertySpecificOption.ALWAYS`; `EvalCondition.isPatternScopeDelimiter()` is moot. Spec for #12 updated.
+1. ✅ **#12 closed** — DRLXXXX `if/else` Form A shipped end-to-end (grammar + visitor desugar + 5 runtime gap-fixes + 10 new runtime tests). 9 commits on `origin/main` (`511696c..8f37d23`).
+2. ✅ Workspace spec updated (`IMPLEMENT_SYNTAX_CANDIDATES.md` row 9 marked implemented).
+3. ✅ Blog `tk01` written: `blog/2026-04-28-tk01-if-else-exposed-23-gaps.md`.
 
 ## Current state
 
 ### Test suite
-- **DRLX: 125 passing, 0 failures.** Was 111 → +14 (#23: model 2, parse-result 2, eval-expression 3, eval-IR-builder 1, test-element-parse 2, test-element runtime 4).
-- MVEL3 full suite: unchanged, 720 passing.
+- **DRLX: 141 passing, 0 failures.** Was 125 → +16 (6 IfElseParse + 10 IfElse).
+- MVEL3 full suite: not exercised this session.
 
 ### GitHub issues
-- `#23` CLOSED this session (test construct).
-- `#22` OPEN (Form B if/else — multi-consequence; postponed).
-- `#12` OPEN, **NEXT** (Form A if/else — plan ready, depends on shipped #23).
+- `#12` CLOSED this session (if/else Form A).
+- `#22` OPEN (Form B if/else — multi-consequence; natural next).
 - `#16` still open (RuleIR proto experiment).
 
 ### Migration policy
@@ -24,15 +22,15 @@
 
 ## Immediate next action
 
-Start **#12** (if/else, Form A). Plan: `plans/2026-04-27-if-else-branching-implementation.md`. 10 tasks, pure grammar + visitor desugar onto the `EvalIR` infrastructure shipped in #23. No risky bridging code remaining. Property-reactivity Task 9 verifies natural behaviour (no workaround needed).
+User-pick. Two open tickets remain: **#22** (Form B if/else — per-branch consequences, will need a new IR + multi-consequence rule shape; non-trivial) and **#16** (RuleIR proto experiment). Neither has a current spec/plan in `specs/` or `plans/`. Recommend brainstorming whichever lands first.
 
 ## Gotchas (new this session)
 
-- **DRLX uses `PropertySpecificOption.ALWAYS`** (`DrlxRuleAstRuntimeBuilder.java:105`). All pattern properties watched by default; `EvalCondition.isPatternScopeDelimiter() == true` does NOT inhibit re-evaluation in this configuration. If DRLX ever switches to `ALLOWED` mode, eval guards' property reads need explicit propagation (similar to #19).
-- **`EvaluatorSink` already exists** at `org.drools.drlx.builder.EvaluatorSink`. Every lambda-carrying class (`DrlxLambdaConstraint`, `DrlxLambdaBetaConstraint`, `DrlxLambdaConsequence`, now `DrlxEvalExpression`) implements it. `compileBatch(...)` iterates `pendingLambdas` calling `target.bindEvaluator(resolved)`.
-- **`EvalExpression.evaluate` signature**: `(BaseTuple, Declaration[], ValueResolver, Object) throws Exception` — 4 args, ValueResolver from `org.drools.base.base`. Tuple value extraction: `tuple.get(decl).getObject()` (canonical) or `tuple.getObject(decl)` (simpler, works for binding-decl).
-- **`org.mvel3.Evaluator` is NOT a functional interface** — has multiple methods. Lambda-style instantiation fails at compile time.
-- **Top-level parser entry**: `parser.drlxCompilationUnit()` returns `DrlxCompilationUnitContext` (DRLX-specific). `parser.compilationUnit()` returns the inherited Java/MVEL3 `CompilationUnitContext` which has no `ruleDeclaration()` accessor.
+- **MVEL3 doesn't bean-rewrite property access inside `!(...)`** — `!(c.field == X)` keeps `c.field` as direct field access; private fields fail Java compilation. Workaround: `(expr) == false`. Visitor's cumulative-guard negation uses this form (`DrlxToRuleAstVisitor.java:273`). If MVEL3 ever fixes this, the workaround can be reverted.
+- **Drools' `LogicTransformer` clones constraints during OR-tree expansion** — deferred-compile constraints (declarations is null until `bindEvaluator` fires) NPE on the eager-init clone path. `DrlxLambdaConstraint.clone()` and `DrlxLambdaBetaConstraint.clone()` now use the pre-compiled-evaluator constructor and reuse the bound evaluator (MVEL3 evaluators are stateless). Triggered only when `OR(AND(...))` appears in LHS — Form A is the first feature to produce this shape.
+- **`MVEL.map()`/`MVEL.pojo()` builders need explicit `.imports(...)`** — even same-package types don't resolve without it. `DrlxLambdaCompiler.addImports()` seeds from `parseResult.imports()`; eval/consequence/pattern batch builders all pass it through. Without this, enum constants and external types in expressions fail with `Unsolved symbol`.
+- **`getTypeMap` must walk nested `GroupElement` children** — consequence-side declaration lookup for patterns inside OR/AND branches (Form A's shape). `collectPatternTypes` is now recursive (`DrlxLambdaCompiler.java:421`).
+- **`rulePattern : boundOopath ','` requires trailing comma** — branch bodies introduced a separate `branchItem` production with comma-as-separator (no trailing) so single-pattern branches don't need a `,` after `boundOopath`.
 
 Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
@@ -40,11 +38,11 @@ Older gotchas: *unchanged — retrieve with* `git show HEAD~1:HANDOFF.md`
 
 | Topic | Path |
 |-------|------|
-| #12 spec (revised) | `specs/2026-04-27-if-else-branching-design.md` |
-| #12 plan (slimmer, NEXT) | `plans/2026-04-27-if-else-branching-implementation.md` |
-| #23 plan (DONE — for reference) | `plans/2026-04-27-test-construct-implementation.md` |
-| Latest blog entry | `blog/2026-04-27-tk02-test-before-if-else.md` |
-| #23 implementation commits | `git -C ~/usr/work/mvel3-development/drlx-parser log a1e3101..511696c` |
+| #12 spec (DONE — for reference) | `specs/2026-04-27-if-else-branching-design.md` |
+| #12 plan (DONE — for reference) | `plans/2026-04-27-if-else-branching-implementation.md` |
+| Latest blog entry | `blog/2026-04-28-tk01-if-else-exposed-23-gaps.md` |
+| #12 implementation commits | `git -C ~/usr/work/mvel3-development/drlx-parser log 511696c..8f37d23` |
+| Syntax candidates (workspace) | `specs/IMPLEMENT_SYNTAX_CANDIDATES.md` |
 
 ## Key commands
 
