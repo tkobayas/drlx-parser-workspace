@@ -16,3 +16,4 @@
 | [2026-04-28-tk01-if-else-exposed-23-gaps.md](2026-04-28-tk01-if-else-exposed-23-gaps.md) | 2026-04-28 | if/else exposed #23's gaps — five layers under the easy plan |
 | [2026-04-28-tk02-round-trip-on-mvel-425.md](2026-04-28-tk02-round-trip-on-mvel-425.md) | 2026-04-28 | round-trip on mvel#425 — workaround out, upstream in |
 | [2026-04-30-tk01-benchmark-unit-import.md](2026-04-30-tk01-benchmark-unit-import.md) | 2026-04-30 | benchmark unit import — the class was there, the import wasn't |
+| [2026-04-30-tk02-epic-26-issue-triage.md](2026-04-30-tk02-epic-26-issue-triage.md) | 2026-04-30 | epic #26 issue triage — 18 created, 3 already done |
