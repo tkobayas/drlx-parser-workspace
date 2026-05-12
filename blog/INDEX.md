@@ -18,3 +18,4 @@
 | [2026-04-30-tk01-benchmark-unit-import.md](2026-04-30-tk01-benchmark-unit-import.md) | 2026-04-30 | benchmark unit import — the class was there, the import wasn't |
 | [2026-04-30-tk02-epic-26-issue-triage.md](2026-04-30-tk02-epic-26-issue-triage.md) | 2026-04-30 | epic #26 issue triage — 18 created, 3 already done |
 | [2026-05-11-tk01-37-globals-were-half-the-gap.md](2026-05-11-tk01-37-globals-were-half-the-gap.md) | 2026-05-11 | #37 part 1 — globals were half of the gap |
+| [2026-05-12-tk01-45-symbol-solvers-static-types.md](2026-05-12-tk01-45-symbol-solvers-static-types.md) | 2026-05-12 | #45 — symbol solvers see static types |
