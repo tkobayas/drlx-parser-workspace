@@ -2,48 +2,49 @@
 
 ## Session goals (done)
 
-1. ✅ **#45 — `DataStore.update(T)` coercion.** JavaParser AST rewriter (`DataStoreUpdateRewriter`) wired into `DrlxRuleAstRuntimeBuilder` between consequence-text capture and MVEL3 compile. Cheap String guards make cost proportional to rules-with-DataStore-update, not total rule count. Project commits `b712f85..16bcacf`, pushed to `origin/main`.
-2. ✅ **Off-plan addition: `DataStoreSupport`.** Static facade exposing `lookup(DataStore<?>, Object)`. Needed because MVEL3's symbol solver type-checks consequences at compile time via JavaParser symbol-solver-core; `lookup(Object)` lives on impl-package `InternalStoreCallback`, not on the public `DataStore<T>`. Spec had this flagged as runtime risk; it bites at compile.
-3. ✅ **#45 closed** with summary referencing the new tests and the off-plan facade.
+1. ✅ **Brainstormed mvel/mvel#428** (Codex's `LambdaRegistry_Refactor.md` as input). 12 rounds resolved the design's open questions: `LambdaPersistenceManager` owns `physicalId→ArtifactRef`, PM is service-layer not compile-wrapper, file format = Properties `format.version=2`, lifecycle = lazy `LambdaRuntime.getInstance()`. Spec at `specs/2026-05-12-mvel-lambda-registry-refactor-design.md`.
+2. ✅ **Wrote two implementation plans**: Plan 1 (MVEL, 9 tasks) at `plans/2026-05-12-mvel-lambda-registry-refactor-implementation.md`. Plan 2 (DRLX + Phase C cutover, 9 tasks) at `plans/2026-05-12-drlx-lambda-boundary-implementation.md`. Caught two plan blockers during review: Phase 1 sequencing (kept `entriesByPhysicalId` alive through Phase 4) and FQN reconstruction (passed FQN through `registerPhysicalPath(int, String, Path)`).
+3. ✅ **Executed Plan 1 inline (8 commits on `lambda-registry-refactor`).** MVEL3 733 tests passing (was 722). `LambdaRegistry` deleted outright. 13 Phase 0 tests added (M1–M13). DRLX-facing seam locked: `ArtifactRef`, `LambdaArtifactLoader.loadOrDefinePersistedClass`, `LambdaRuntime.isPersistenceEnabled() / defaultPersistencePath()`, `MVELBatchCompiler.getArtifactRef(handle)`. MVEL3 3.0.0-SNAPSHOT installed.
+4. ✅ Today's blog: `blog/2026-05-12-tk02-428-half-the-refactor-plus-a-bridge.md`. Garden: 4 entries (`GE-20260512-enum1`, `-mvelreset`, `-mvelvisib`, `-pasfacad`).
 
 ## Current state
 
-### Test suite
-- **DRLX: 170 passing, 0 failures.** Up from 162 baseline.
-- `DataStoreCrudTest`: 5 (was 3) — `updateByObjectViaDataStore`, `updateOfMissingFactThrows` added.
-- `DataStoreUpdateRewriterTest` (new): 11 unit tests, no MVEL3, no Drools.
+### MVEL3 (branch `lambda-registry-refactor`, NOT YET PUSHED)
+- Commits `b91af14..<HEAD>` (8 commits). Run `git -C ~/usr/work/mvel3-development/mvel log --oneline lambda-registry-refactor ^main` to list.
+- Test suite: 733 passing, 0 failing, 117 skipped.
+- DRLX `main` does **not** compile against this SNAPSHOT yet — that's the entry point for Plan 2.
 
-### GitHub issues
-- **Epic #26**: 13 open sub-issues, 5 closed (#27–#29 + #37 + now #45)
-- High priority: #39 (accumulate), #40 (groupBy), #41 (queries)
-- **#34** (compact `with`-block update) is now technically unblocked by #45, but it's a grammar change — much bigger than #45 was.
-
-### Migration policy
-*Unchanged — retrieve with* `git show 98b59ab:HANDOFF.md`
+### DRLX (`main`, unchanged this session)
+- Still references the deleted `LambdaRegistry` in `DrlxLambdaCompiler.java`, `DrlxRuleBuilder.java`, `drlx/tools/DrlxCompiler.java`. Confirmed by smoke `mvn compile` — fails on those three files exactly. Plan 2 Task 1 expects this state.
 
 ## Immediate next action
 
-User-pick. From the open Epic #26: **#39 (accumulate)** or **#40 (groupBy)** or **#41 (queries)** — each is a meaningful chunk. **#34** (compact `with`-block update) is now the natural follow-up to #45 but it's a DRLX grammar + MVEL3 collaboration, larger scope than today.
+**Resume Plan 2 from Task 1.** Working dir: `/home/tkobayas/usr/work/mvel3-development/drlx-parser`, branch `main`. Plan path: `plans/2026-05-12-drlx-lambda-boundary-implementation.md`. First step: verify MVEL SNAPSHOT in `~/.m2`, confirm DRLX baseline broken, **create the DRLX GitHub issue under Epic #26** (Plan 2 Task 1 Step 1.4 has the body). All DRLX commits stay local until Phase C cutover (Plan 2 Task 9) — coordinated push to both repos at the end.
 
 ## Gotchas (this session)
 
-- **MVEL3 symbol solver rejects impl-only methods at compile time, not runtime.** Symptom: `Method 'lookup' cannot be resolved in context persons.lookup(p)` with stack frames in `JavaParserFacade.solveMethodAsUsage` and `MVELToJavaRewriter.maybeCoerceArguments`. Cause: MVEL3 transpiles via JavaParser symbol-solver-core, which sees only the static type. Fix: route impl-only methods through a static facade with a typed signature. Captured in garden as `GE-20260512-0cda17`.
-- **DRLX `update(p)` infinite loop when consequence doesn't break the match.** Test hangs silently. Classic Drools 101: change a property the pattern depends on so the activation is removed post-update. The test fixture for `updateByObjectViaDataStore` uses `p.setAge(0)` against a pattern `age > 30`.
-- **Don't trust spec runtime/compile-time framing without checking.** `update(T)` spec said the impl-only `lookup` was a runtime risk; it was actually a compile-time hard fail. Symbol-solver gates aren't intuitive.
+- **Java enum init order.** `INSTANCE` is constructed before `static final` fields are initialized. Instance-field initializer that reads a static field fails with "illegal reference to static field from initializer." Fix: wire in a `static { }` block after the constants. Garden: `GE-20260512-enum1`.
+- **`mvel3.compiler.lambda.resetOnTestStartup=true`** is set globally in MVEL `pom.xml` surefire config. Combined with lazy init + `Files.walk(persistenceRoot)`-from-root in `resetAndRemoveAllPersistedFiles`, this nukes any test's `@TempDir` parent on first `getInstance()`. Tests that redirect `persistence.path` MUST also set `resetOnTestStartup=false`. Garden: `GE-20260512-mvelreset`.
+- **Generated evaluator class visibility.** `MVEL.<T>pojo(T.class, ...)` against a `public static` inner of a package-private test class fails: `org.mvel3.GeneratorEvaluator___N` can't reach `org.mvel3.lambdaextractor.MyTest`. Make the outer test class `public`. Garden: `GE-20260512-mvelvisib`.
 
-For historical gotchas: *unchanged — retrieve with* `git show 98b59ab:HANDOFF.md`
+## Techniques
+
+- **Pass-through facade as a one-commit migration bridge.** Used between Phase 6a (introduce `LambdaRuntime`) and Phase 6b (delete `LambdaRegistry`). The facade became state-less delegation for one commit; tests stayed green; next commit migrated callers and deleted the facade. Generally useful for "rename a central class with N callers." Garden: `GE-20260512-pasfacad`.
+
+For historical gotchas: *unchanged — retrieve with* `git show 98b59ab:HANDOFF.md` and `git show fb86af2:HANDOFF.md`.
 
 ## References
 
 | Topic | Path |
 |-------|------|
-| Today's blog entry | `blog/2026-05-12-tk01-45-symbol-solvers-static-types.md` |
-| #45 spec / plan | `specs/2026-05-12-drlx-datastore-update-coercion-design.md`, `plans/2026-05-12-drlx-datastore-update-coercion-implementation.md` |
-| Garden gotcha | `~/.hortora/garden/jvm/GE-20260512-0cda17.md` |
-| Rewriter | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DataStoreUpdateRewriter.java` |
-| Static facade | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DataStoreSupport.java` |
-| Previous handover | `git show 98b59ab:HANDOFF.md` |
+| Today's blog | `blog/2026-05-12-tk02-428-half-the-refactor-plus-a-bridge.md` |
+| Spec | `specs/2026-05-12-mvel-lambda-registry-refactor-design.md` |
+| Plan 1 (MVEL, done) | `plans/2026-05-12-mvel-lambda-registry-refactor-implementation.md` |
+| Plan 2 (DRLX, tomorrow) | `plans/2026-05-12-drlx-lambda-boundary-implementation.md` |
+| Codex source plan | `~/usr/work/mvel3-development/mvel/LambdaRegistry_Refactor.md` |
+| Garden entries | `~/.hortora/garden/jvm/GE-20260512-{enum1,mvelreset,mvelvisib,pasfacad}.md` |
+| Previous handover | `git show fb86af2:HANDOFF.md` |
 
-## Key commands
+## Migration policy & Key commands
 
-*Unchanged — retrieve with:* `git show 98b59ab:HANDOFF.md`
+*Unchanged — retrieve with* `git show fb86af2:HANDOFF.md`
