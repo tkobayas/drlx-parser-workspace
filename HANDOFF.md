@@ -2,45 +2,48 @@
 
 ## Session goals (done)
 
-1. ✅ **DrlxRuleUnitInstance wrapper** — built test infra (wrapper, TestDataObserver, MyUnit promoted to RuleUnitData) to enable #37-style rules calling `DataStore.add/remove` from consequence bodies. Project commits `b034bf7..f99b693`.
-2. ✅ **#37 part 1** — DRLX now registers every public unit-class field as a global on the KiePackage, declares an entry point for every DataSource field, and resolves globals at MVEL3 eval time. Mirrors `PackageModel.addRuleUnitVariable` upstream. Project commits `8528cf3..cab2862`.
-3. ✅ **Issue triage** — closed #37 (add/remove done), filed #45 (`update(T)` coercion), closed #46 as duplicate of pre-existing #34, updated epic #26 body.
+1. ✅ **#45 — `DataStore.update(T)` coercion.** JavaParser AST rewriter (`DataStoreUpdateRewriter`) wired into `DrlxRuleAstRuntimeBuilder` between consequence-text capture and MVEL3 compile. Cheap String guards make cost proportional to rules-with-DataStore-update, not total rule count. Project commits `b712f85..16bcacf`, pushed to `origin/main`.
+2. ✅ **Off-plan addition: `DataStoreSupport`.** Static facade exposing `lookup(DataStore<?>, Object)`. Needed because MVEL3's symbol solver type-checks consequences at compile time via JavaParser symbol-solver-core; `lookup(Object)` lives on impl-package `InternalStoreCallback`, not on the public `DataStore<T>`. Spec had this flagged as runtime risk; it bites at compile.
+3. ✅ **#45 closed** with summary referencing the new tests and the off-plan facade.
 
 ## Current state
 
 ### Test suite
-- **DRLX: 162 passing, 0 failures.** Up from 146 baseline at session start.
+- **DRLX: 170 passing, 0 failures.** Up from 162 baseline.
+- `DataStoreCrudTest`: 5 (was 3) — `updateByObjectViaDataStore`, `updateOfMissingFactThrows` added.
+- `DataStoreUpdateRewriterTest` (new): 11 unit tests, no MVEL3, no Drools.
 
 ### GitHub issues
-- **Epic #26**: 14 open sub-issues, 4 closed (#27–#29 + newly #37)
-- High priority: **#45** (update(T) coercion — new), #39 (accumulate), #40 (groupBy), #41 (queries)
-- The `with`-block compact update for `alerts.update(t{...})` is covered by #34 (Low Priority), now annotated with the dependency on #45
+- **Epic #26**: 13 open sub-issues, 5 closed (#27–#29 + #37 + now #45)
+- High priority: #39 (accumulate), #40 (groupBy), #41 (queries)
+- **#34** (compact `with`-block update) is now technically unblocked by #45, but it's a grammar change — much bigger than #45 was.
 
 ### Migration policy
-*Unchanged — retrieve with* `git show 10e0a0f:HANDOFF.md`
+*Unchanged — retrieve with* `git show 98b59ab:HANDOFF.md`
 
 ## Immediate next action
 
-User-pick. Natural follow-ups from today: **#45** (`update(T)` coercion — small parser/visitor change, scope already analyzed in #37 close comment) or any of #39/#40/#41. The disabled-then-enabled `DataStoreCrudTest` is now the test fixture for #45's happy-path tests.
+User-pick. From the open Epic #26: **#39 (accumulate)** or **#40 (groupBy)** or **#41 (queries)** — each is a meaningful chunk. **#34** (compact `with`-block update) is now the natural follow-up to #45 but it's a DRLX grammar + MVEL3 collaboration, larger scope than today.
 
-## Gotchas (this session, resolved)
+## Gotchas (this session)
 
-- Mirroring half of an upstream registration produces silent-but-broken end-to-end behaviour. `PackageModel.addRuleUnitVariable` does globals + entry points in one method; DRLX did only entry points (and only for LHS-pattern sources). The gap was invisible until #37 introduced consequence-only DataSource fields.
-- Compile-time MVEL3 type-map awareness is not eval-time variable provisioning. `DrlxLambdaConsequence` needs both: globalNames in the type map AND `valueResolver.getGlobal(name)` calls at eval time. The spec covered the first.
-- Garden gotcha captured: GE-20260511-264416 — `Write` tool fails after `git mv` until new path is `Read`. Local garden at `~/.hortora/garden` (initialized this session, no remote).
+- **MVEL3 symbol solver rejects impl-only methods at compile time, not runtime.** Symptom: `Method 'lookup' cannot be resolved in context persons.lookup(p)` with stack frames in `JavaParserFacade.solveMethodAsUsage` and `MVELToJavaRewriter.maybeCoerceArguments`. Cause: MVEL3 transpiles via JavaParser symbol-solver-core, which sees only the static type. Fix: route impl-only methods through a static facade with a typed signature. Captured in garden as `GE-20260512-0cda17`.
+- **DRLX `update(p)` infinite loop when consequence doesn't break the match.** Test hangs silently. Classic Drools 101: change a property the pattern depends on so the activation is removed post-update. The test fixture for `updateByObjectViaDataStore` uses `p.setAge(0)` against a pattern `age > 30`.
+- **Don't trust spec runtime/compile-time framing without checking.** `update(T)` spec said the impl-only `lookup` was a runtime risk; it was actually a compile-time hard fail. Symbol-solver gates aren't intuitive.
 
-For historical gotchas: *unchanged — retrieve with* `git show 10e0a0f:HANDOFF.md`
+For historical gotchas: *unchanged — retrieve with* `git show 98b59ab:HANDOFF.md`
 
 ## References
 
 | Topic | Path |
 |-------|------|
-| Today's blog entry | `blog/2026-05-11-tk01-37-globals-were-half-the-gap.md` |
-| Wrapper spec / plan | `specs/2026-05-11-drlx-rule-unit-instance-design.md`, `plans/2026-05-11-drlx-rule-unit-instance-implementation.md` |
-| Globals spec / plan | `specs/2026-05-11-drlx-unit-field-globals-design.md`, `plans/2026-05-11-drlx-unit-field-globals-implementation.md` |
-| DRLXXXX spec | `docs/DRLXXXX.md` (in project repo) |
-| Previous handover | `git show 8c1fade:HANDOFF.md` |
+| Today's blog entry | `blog/2026-05-12-tk01-45-symbol-solvers-static-types.md` |
+| #45 spec / plan | `specs/2026-05-12-drlx-datastore-update-coercion-design.md`, `plans/2026-05-12-drlx-datastore-update-coercion-implementation.md` |
+| Garden gotcha | `~/.hortora/garden/jvm/GE-20260512-0cda17.md` |
+| Rewriter | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DataStoreUpdateRewriter.java` |
+| Static facade | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DataStoreSupport.java` |
+| Previous handover | `git show 98b59ab:HANDOFF.md` |
 
 ## Key commands
 
-*Unchanged — retrieve with:* `git show 10e0a0f:HANDOFF.md`
+*Unchanged — retrieve with:* `git show 98b59ab:HANDOFF.md`
