@@ -2,45 +2,46 @@
 
 ## Session goals (done)
 
-1. ✅ **Follow-up 1** — `MVELBatchCompiler` no-persist mode now stays off the global `LambdaRuntime` state. Branches on `persistenceDir == null`, dedups and renames through a batch-local `LambdaCatalog`. Tests M12 (probe-register catalog untouched) and M13 (no-persist batch ignores previously persisted artifact) added. Landed on MVEL via PR `#430` (`70d95695`).
-2. ✅ **Follow-up 2** — `Path.of(classFile)` now wrapped in try/catch on both sides; converted to `InvalidLambdaRegistryException` / `InvalidDrlxLambdaMetadataException`. Tests M7d (MVEL) and D3b (DRLX) added. Landed on MVEL via PR `#431` (`ef8fcd9e`), on DRLX `main` directly (`46f7d2f`).
+1. ✅ **Spec for #39** (Accumulate, parent epic #26) — design completed and written to `specs/2026-05-13-drlx-accumulate-design.md`. Two rounds of Codex review applied (count() zero-arg, scope ownership, qualified-name silent-aliasing, single vs multi lowering wording).
+2. ✅ **Implementation plan for #39** — bite-sized TDD plan at `plans/2026-05-13-drlx-accumulate-implementation.md` (11 tasks, ~700 lines). One round of Codex review applied (sealed-interface vs `PendingAccumulatorIR`).
 
-Both findings from the post-Plan-2 follow-up doc are closed. The original two-issue refactor (`mvel/mvel#428`, `tkobayas/drlx-parser#47`) is fully wrapped.
+No code has been written in the project repo yet.
+
+## Locked decisions for v1
+
+- **Scope:** forms 1 + 2 only (simple-function + multi-function). No `acc(...)` keyword. Built-ins: `avg`, `sum`, `min`, `max`, `count`.
+- **Binding form:** `(VAR | typeType) identifier '=' accumulateCall` — both `var` and typed (`int`, `double`, `BigDecimal`, generics OK).
+- **Lowering:** N × `SingleAccumulate` sharing cloned source patterns. MultiAccumulate folding is a fast-follow.
+- **Source visibility:** `p` is internal to the accumulate; `avgAge` (result) is visible. Build-time error on late `p` reference.
+- **Qualified names:** parse but build-time reject in v1 (no silent aliasing). Custom-function support deferred.
+- **Validation:** all binding-scope errors are build-time (visitor does no scope check).
 
 ## Current state
 
-### MVEL
-- All work on `main`. Final tip: `ef8fcd9e`. Test suite: 737 passing.
-
-### DRLX
-- All work on `main`. Final tip: `46f7d2f`. Test suite: 177 main + 5 no-persist = **182 passing** (was 181 baseline → +1 D3b).
+### Project repo
+- Branch `main`, tip `46f7d2f`. No new commits this session.
 
 ### Workspace
-- Blog entry `2026-05-13-tk02-428-no-persist-and-nul-byte.md` committed (`85c5f60`).
-- Two cross-project garden entries submitted (commit `060f964` in `~/.hortora/garden`): `GE-20260513-fbfeba` (Java `\uXXXX` in comments) and `GE-20260513-a0d2d6` (probe-register technique).
-- No uncommitted artifacts beyond this handover.
+- Spec + plan committed in this session's wrap (see commit at session end). No other uncommitted artifacts.
 
 ## Immediate next action
 
-**No specific next thread is in flight.** The lambda-registry epic is closed. Candidate directions, in priority order suggested by current state:
+**Execute Task 1 of `plans/2026-05-13-drlx-accumulate-implementation.md`** — confirm baseline tests pass (`mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/pom.xml -pl drlx-parser-core -am test`, expect 182 green), post the v1-scope comment on issue #39, then proceed to Task 2 (grammar).
 
-1. **New rule-syntax features** — per memory `project_status.md`, "next: more rule syntax". Pick an open issue on `tkobayas/drlx-parser`.
-2. **Drools 10.1.0 alignment** — only if specific gaps surfaced that haven't been logged as issues yet.
-3. **MVEL3 batch-compiler API hardening** — `MVELBatchCompiler.getArtifactRef(...)` still calls into the global persistence manager unconditionally. Not a bug today (DRLX only invokes it on the persistence path), but worth a guard if the no-persist contract ever leaks into a caller.
+User's execution preference for tomorrow not yet chosen — offer **subagent-driven** (recommended) vs **inline** at session start.
 
 ## Gotchas (this session)
 
-- **`\u0000` in Java comments still trips JLS §3.3.** Writing a `\u0000` inside a `//` comment to document the escape silently injected a NUL byte into the source file, which broke the next Edit-tool search and would have made the build hostile to byte-level scanners. The lexer pre-processes Unicode escapes before recognising comments. Fix: `\\u0000` (odd backslash count before `\u` → not an escape). Captured as garden entry `GE-20260513-fbfeba`.
-
-- **Map-mode evaluators don't get unique class names from `CompilationUnitGenerator`.** `createMapEvaluatorUnit` returns the template unit unchanged (no `renameTemplateClass` call). Two distinct Map-mode expressions therefore produce the same FQN; only the persistence-path `_<physicalId>` rename makes them unique. FQN-based dedup is correct only for paths that go through `registerAndRename`. Project-specific; lives in this blog rather than the cross-project garden.
+- **Sealed interfaces and transient visitor types**: the original plan had `PendingAccumulatorIR implements LhsItemIR`, which can't compile against the sealed permits list. Fixed by inline folding in the visitor (no helper LhsItemIR subtype). See Task 4.5 of the plan.
+- **DRLXXXX lines 824/829** omit `var` for simple-form accumulate. Verified spec-wide: this is a drafting slip, not intentional. Every other accumulate-related example uses `var` (lines 839, 846, 851).
 
 ## References
 
 | Topic | Path |
 |-------|------|
-| Today's blog | `blog/2026-05-13-tk02-428-no-persist-and-nul-byte.md` |
-| Garden entries (this session) | `~/.hortora/garden/jvm/GE-20260513-fbfeba.md`, `~/.hortora/garden/tools/GE-20260513-a0d2d6.md` |
-| Plan 1 (MVEL, done) | `plans/2026-05-12-mvel-lambda-registry-refactor-implementation.md` |
-| Plan 2 (DRLX + Phase C, done) | `plans/2026-05-12-drlx-lambda-boundary-implementation.md` |
-| Spec | `specs/2026-05-12-mvel-lambda-registry-refactor-design.md` |
+| Spec | `specs/2026-05-13-drlx-accumulate-design.md` |
+| Plan | `plans/2026-05-13-drlx-accumulate-implementation.md` |
+| Issue | https://github.com/tkobayas/drlx-parser/issues/39 |
+| Parent epic | https://github.com/tkobayas/drlx-parser/issues/26 |
+| Spec source (DRLXXXX §Accumulate) | `~/usr/work/mvel3-development/drlx-parser/docs/DRLXXXX.md` lines 820–890 |
 | Previous handover | `git show HEAD~1:HANDOFF.md` |
