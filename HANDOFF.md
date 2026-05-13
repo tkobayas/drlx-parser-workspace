@@ -2,78 +2,45 @@
 
 ## Session goals (done)
 
-1. ✅ **Executed Plan 2 inline (5 DRLX commits).** Tasks 1–8: DRLX issue tkobayas/drlx-parser#47 created, `DrlxLambdaMetadata` rewritten to Properties v2 with `classFile`, `DrlxPreBuildLambdaCompiler` migrated to `getArtifactRef`, `DrlxLambdaCompiler.loadPreCompiledEvaluator(ArtifactRef)` via `LambdaArtifactLoader`, constants migrated (DrlxRuleBuilder + DrlxCompiler + tests + benchmarks), Phase 0 tests D1–D7 added (D5 covered by existing tests). 176 main + 5 no-persist = **181 tests passing** (was 175 baseline).
-2. ✅ **Task 6 dropped on review** (see Gotchas). Plan and spec updated to record the decision. Counter access goes through static `MVELCompiler.compileInvocationCount()` directly; no DRLX accessor needed.
-3. ✅ **Phase C cutover complete.** MVEL `lambda-registry-refactor` pushed, PR opened, merged to mvel/mvel `main`. DRLX `main` pushed to `tkobayas/drlx-parser`. Both issues closed (mvel/mvel#428, tkobayas/drlx-parser#47).
+1. ✅ **Follow-up 1** — `MVELBatchCompiler` no-persist mode now stays off the global `LambdaRuntime` state. Branches on `persistenceDir == null`, dedups and renames through a batch-local `LambdaCatalog`. Tests M12 (probe-register catalog untouched) and M13 (no-persist batch ignores previously persisted artifact) added. Landed on MVEL via PR `#430` (`70d95695`).
+2. ✅ **Follow-up 2** — `Path.of(classFile)` now wrapped in try/catch on both sides; converted to `InvalidLambdaRegistryException` / `InvalidDrlxLambdaMetadataException`. Tests M7d (MVEL) and D3b (DRLX) added. Landed on MVEL via PR `#431` (`ef8fcd9e`), on DRLX `main` directly (`46f7d2f`).
+
+Both findings from the post-Plan-2 follow-up doc are closed. The original two-issue refactor (`mvel/mvel#428`, `tkobayas/drlx-parser#47`) is fully wrapped.
 
 ## Current state
 
-### MVEL3 — refactor lives on `main`
-- Both repos: refactor merged. SNAPSHOT `3.0.0-SNAPSHOT` already installed locally.
-- Branch `lambda-registry-refactor` can be deleted at your convenience.
+### MVEL
+- All work on `main`. Final tip: `ef8fcd9e`. Test suite: 737 passing.
 
-### DRLX — refactor lives on `main`
-- 5 commits landed (`8346329 ..abd3dcd`). Run `git -C ~/usr/work/mvel3-development/drlx-parser log --oneline origin/main ^origin/main~5` to list.
-- Test suite: 181 passing.
+### DRLX
+- All work on `main`. Final tip: `46f7d2f`. Test suite: 177 main + 5 no-persist = **182 passing** (was 181 baseline → +1 D3b).
 
-### Workspace — uncommitted plan/spec updates from Task 6 drop
-- `plans/2026-05-12-drlx-lambda-boundary-implementation.md` — Task 6 marked SKIPPED; phase-ordering, files-modified, and self-review tables updated.
-- `specs/2026-05-12-mvel-lambda-registry-refactor-design.md` — clarifies the counter is **static** on `MVELCompiler` and that `DrlxRuleBuilder.getBatchCompilerForTests()` is not introduced.
-- Also `CLAUDE.md` — unrelated writing-style-guide pointer.
+### Workspace
+- Blog entry `2026-05-13-tk02-428-no-persist-and-nul-byte.md` committed (`85c5f60`).
+- Two cross-project garden entries submitted (commit `060f964` in `~/.hortora/garden`): `GE-20260513-fbfeba` (Java `\uXXXX` in comments) and `GE-20260513-a0d2d6` (probe-register technique).
+- No uncommitted artifacts beyond this handover.
 
 ## Immediate next action
 
-**Two follow-up findings from the refactor.** Source doc:
-`/home/tkobayas/usr/work/mvel3-development/mvel/LambdaRegistry_Refactor_followup.md`
+**No specific next thread is in flight.** The lambda-registry epic is closed. Candidate directions, in priority order suggested by current state:
 
-1. **`MVELBatchCompiler` no-persist path still touches global runtime state.**
-   When `persistenceDir == null`, the batch path still hits
-   `LambdaRuntime.getInstance().catalog().register(...)` and
-   `persistenceManager().artifactExists(...)`. The single-compiler path branches
-   correctly; the batch path doesn't. Fix: add a top-level no-persist branch in
-   `MVELBatchCompiler.add(...)` / `compile(...)` analogous to `MVELCompiler`.
-   Sites: `MVELBatchCompiler.java:55`, `:66`; `MVELCompiler.java:219`.
-
-2. **Invalid persisted `classFile` paths bypass typed metadata exceptions.**
-   `Path.of(classFile)` throws unchecked `InvalidPathException`, escaping both
-   `InvalidLambdaRegistryException` (MVEL) and `InvalidDrlxLambdaMetadataException`
-   (DRLX), and on the DRLX side bypassing `DrlxMetadataMismatchMode` routing.
-   Fix: wrap `Path.of(...)` in try/catch and convert. Sites:
-   `LambdaRegistryStore.java:65`, `DrlxLambdaMetadata.java:91`.
-
-Both are correctness issues. Suggested order: do (1) in MVEL with new tests
-(easier to bound), then (2) on both sides in lockstep.
+1. **New rule-syntax features** — per memory `project_status.md`, "next: more rule syntax". Pick an open issue on `tkobayas/drlx-parser`.
+2. **Drools 10.1.0 alignment** — only if specific gaps surfaced that haven't been logged as issues yet.
+3. **MVEL3 batch-compiler API hardening** — `MVELBatchCompiler.getArtifactRef(...)` still calls into the global persistence manager unconditionally. Not a bug today (DRLX only invokes it on the persistence path), but worth a guard if the no-persist contract ever leaks into a caller.
 
 ## Gotchas (this session)
 
-- **Plan/impl drift on test-only counter.** Plan 2's D1 test plan called
-  `DrlxRuleBuilder.getBatchCompilerForTests().compileInvocationCount()`, but
-  Plan 1 had actually implemented the counter as a **static** method on
-  `MVELCompiler` (not as an instance method on `MVELBatchCompiler` as the spec
-  text suggested). Caught at Task 6; user agreed to drop the bridge accessor
-  rather than add a delegating MVEL method, since the counter is JVM-global
-  test-only instrumentation. Lesson: validate spec promises against actual Plan
-  1 code before consuming them in Plan 2. The check is a single grep — cheap
-  insurance.
+- **`\u0000` in Java comments still trips JLS §3.3.** Writing a `\u0000` inside a `//` comment to document the escape silently injected a NUL byte into the source file, which broke the next Edit-tool search and would have made the build hostile to byte-level scanners. The lexer pre-processes Unicode escapes before recognising comments. Fix: `\\u0000` (odd backslash count before `\u` → not an escape). Captured as garden entry `GE-20260513-fbfeba`.
 
-- **Plan 2 file inventory missed the benchmark module.** Task 1 Step 1.5
-  inventory only searched `drlx-parser-core/src`. After Task 5 compile,
-  `drlx-parser-benchmark` failed on four files (`KieBaseBuildNoPersistence`,
-  `KieSessionFireAllRules`, `KieBasePreBuildPersistence`,
-  `KieBaseBuildUsingPreBuildArtifacts`). All four migrated in the same Task 5
-  commit — no rework, but the inventory grep should have been repo-wide.
+- **Map-mode evaluators don't get unique class names from `CompilationUnitGenerator`.** `createMapEvaluatorUnit` returns the template unit unchanged (no `renameTemplateClass` call). Two distinct Map-mode expressions therefore produce the same FQN; only the persistence-path `_<physicalId>` rename makes them unique. FQN-based dedup is correct only for paths that go through `registerAndRename`. Project-specific; lives in this blog rather than the cross-project garden.
 
 ## References
 
 | Topic | Path |
 |-------|------|
-| Follow-up findings | `~/usr/work/mvel3-development/mvel/LambdaRegistry_Refactor_followup.md` |
-| Spec | `specs/2026-05-12-mvel-lambda-registry-refactor-design.md` |
+| Today's blog | `blog/2026-05-13-tk02-428-no-persist-and-nul-byte.md` |
+| Garden entries (this session) | `~/.hortora/garden/jvm/GE-20260513-fbfeba.md`, `~/.hortora/garden/tools/GE-20260513-a0d2d6.md` |
 | Plan 1 (MVEL, done) | `plans/2026-05-12-mvel-lambda-registry-refactor-implementation.md` |
 | Plan 2 (DRLX + Phase C, done) | `plans/2026-05-12-drlx-lambda-boundary-implementation.md` |
-| Codex source plan | `~/usr/work/mvel3-development/mvel/LambdaRegistry_Refactor.md` |
-| Previous handover (Plan 1 done) | `git show 1d9cddc:HANDOFF.md` |
-
-## Migration policy & Key commands
-
-*Unchanged — retrieve with* `git show fb86af2:HANDOFF.md`
+| Spec | `specs/2026-05-12-mvel-lambda-registry-refactor-design.md` |
+| Previous handover | `git show HEAD~1:HANDOFF.md` |
