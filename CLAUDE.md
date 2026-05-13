@@ -80,6 +80,12 @@ proactively suggest writing a handover before continuing.
 
 ---
 
+## Writing Style Guide
+
+**The writing style guide at `~/claude-workspace/writing-styles/blog-technical.md` is mandatory for all blog and diary entries.** Load it in full before drafting. Complete the pre-draft voice classification (I / we / Claude-named) before generating any prose. Do not show a draft without verifying it against the style guide.
+
+---
+
 ## Project Type
 
 **Type:** java

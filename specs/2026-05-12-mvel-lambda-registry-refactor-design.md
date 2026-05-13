@@ -263,25 +263,22 @@ Same decision model in both compilers; different compile shape (single vs bulk).
 ```java
 public final class MVELCompiler {
     /** Test-only instrumentation. NOT part of the long-term public compiler API.
-     *  Bumped only on the actual compile path, not on reuse. */
-    public int compileInvocationCount();
-}
-public final class MVELBatchCompiler {
-    /** Test-only. Bumped once per actual bulk compile invocation. */
-    public int compileInvocationCount();
+     *  Bumped only on the actual compile path, not on reuse.
+     *  Static, JVM-global counter. */
+    public static int compileInvocationCount();
 }
 ```
 
-`public` visibility because DRLX-side test D1 needs to observe this from a different package. The javadoc labels them clearly as test-only.
+`public static` because DRLX-side test D1 needs to observe this from a different
+package without holding an `MVELCompiler` instance. The javadoc labels it clearly
+as test-only.
 
-To bridge from DRLX tests to MVEL's compile counter:
-
-```java
-public class DrlxRuleBuilder {
-    /** Test-only accessor. Allows tests to inspect MVELBatchCompiler.compileInvocationCount(). */
-    public MVELBatchCompiler getBatchCompilerForTests();
-}
-```
+**Update (2026-05-13):** Plan 1 implemented this as a **static** method on
+`MVELCompiler` (not an instance method on `MVELBatchCompiler` as earlier wording
+suggested). The bridging accessor `DrlxRuleBuilder.getBatchCompilerForTests()`
+was therefore dropped from Plan 2 — D1 calls `MVELCompiler.compileInvocationCount()`
+directly. Static access is acceptable because the counter is JVM-global
+test-only instrumentation, not per-batch-compiler instance state.
 
 Used by M9 / M10 (MVEL side) and D1 (DRLX side) to assert reuse-vs-recompile semantics without relying on filesystem mtime.
 

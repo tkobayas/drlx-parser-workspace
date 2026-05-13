@@ -35,7 +35,7 @@
 | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxLambdaMetadata.java` | Rewrite to Properties `v2`; `LambdaEntry(fqn, classFile, expression)`; new `toArtifactRef()` accessor; three-state load semantics. |
 | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxPreBuildLambdaCompiler.java` | Use `batchCompiler.getArtifactRef(handle)` instead of `getFqn` + `getPhysicalId`; drop `PendingPreBuildInfo.fqn`. |
 | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxLambdaCompiler.java` | `loadPreCompiledEvaluator(ArtifactRef)`; calls `LambdaArtifactLoader.loadOrDefinePersistedClass`; drop the `LambdaRegistry.INSTANCE.getPhysicalPath` call. |
-| `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleBuilder.java` | Replace `LambdaRegistry.PERSISTENCE_ENABLED` / `DEFAULT_PERSISTENCE_PATH` with `LambdaRuntime.isPersistenceEnabled()` / `defaultPersistencePath()`. Add `getBatchCompilerForTests()` test-only accessor. |
+| `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleBuilder.java` | Replace `LambdaRegistry.PERSISTENCE_ENABLED` / `DEFAULT_PERSISTENCE_PATH` with `LambdaRuntime.isPersistenceEnabled()` / `defaultPersistencePath()`. |
 | `drlx-parser-core/src/main/java/org/drools/drlx/tools/DrlxCompiler.java` | Replace the same two constants. |
 | Existing DRLX tests that import `LambdaRegistry` | Replace imports with `LambdaRuntime`; replace `LambdaRegistry.INSTANCE.resetAndRemoveAllPersistedFiles()` with `LambdaRuntime.getInstance().resetAndRemoveAllPersistedFiles()` (and similar). |
 
@@ -54,7 +54,7 @@ None.
 | 3 | `DrlxPreBuildLambdaCompiler` uses `getArtifactRef` | Pre-build path compiles |
 | 4 | `DrlxLambdaCompiler.loadPreCompiledEvaluator(ArtifactRef)` rewritten | DRLX no longer references `LambdaRegistry` for class loads |
 | 5 | `DrlxRuleBuilder` + `DrlxCompiler` constant migration; existing tests fixed | `mvn compile` green |
-| 6 | `DrlxRuleBuilder.getBatchCompilerForTests()` accessor added | D1 testable |
+| 6 | ~~Test seam accessor~~ — dropped; D1 uses static `MVELCompiler.compileInvocationCount()` | D1 testable via static counter |
 | 7 | D1–D7 tests written | All D-tests green |
 | 8 | Full DRLX test suite green at ≥170 | Test count ≥ baseline + 7 |
 | 9 | Phase C: coordinated push to both repos | MVEL main + DRLX main both contain the refactor |
@@ -578,54 +578,24 @@ EOF
 
 ---
 
-## Task 6: Add `DrlxRuleBuilder.getBatchCompilerForTests()` seam
+## Task 6: ~~Add `DrlxRuleBuilder.getBatchCompilerForTests()` seam~~ — SKIPPED
 
-**Files:**
-- Modify: `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleBuilder.java`
+**Status:** Dropped on 2026-05-13 during Plan 2 execution.
 
-- [ ] **Step 6.1: Find the `MVELBatchCompiler` field in `DrlxRuleBuilder`**
+**Reason:** Plan 1 implemented `compileInvocationCount()` as a **static** method on
+`MVELCompiler` (not as an instance method on `MVELBatchCompiler` as the original
+spec wording suggested). A static counter is global JVM state, so D1 can simply
+call `MVELCompiler.compileInvocationCount()` directly — no instance accessor
+needed. The counter is test-only instrumentation provided by MVEL, not
+per-batch-compiler instance state.
 
-```bash
-grep -n "MVELBatchCompiler\|batchCompiler" /home/tkobayas/usr/work/mvel3-development/drlx-parser/drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleBuilder.java | head -10
-```
-Find where the batch compiler is stored as a field (likely `private final MVELBatchCompiler batchCompiler;` or similar).
-
-- [ ] **Step 6.2: Add a test-only accessor**
-
-After the field declaration, add:
-```java
-/**
- * Test-only accessor. Allows tests to inspect
- * {@link MVELBatchCompiler#compileInvocationCount()} after a build, which is
- * used by the DRLX D1 pre-build-then-reuse characterization test.
- * NOT part of the long-term public DrlxRuleBuilder API.
- */
-public MVELBatchCompiler getBatchCompilerForTests() {
-    return batchCompiler;
-}
-```
-
-If `MVELBatchCompiler` is not directly a field of `DrlxRuleBuilder` (e.g., it lives on `DrlxLambdaCompiler` instead), expose it via the path that's available — possibly `lambdaCompiler.getBatchCompiler()`. Trace the ownership and add the accessor at the right level.
-
-- [ ] **Step 6.3: Commit Task 6 (local)**
-
-```bash
-git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser add \
-    drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleBuilder.java
-git -C /home/tkobayas/usr/work/mvel3-development/drlx-parser commit -m "$(cat <<'EOF'
-Add DrlxRuleBuilder.getBatchCompilerForTests test-only accessor
-
-Bridging seam for D1 (preBuildThenRuntime_loadsWithoutCompile) test in
-DrlxLambdaBoundaryTest: lets DRLX-side tests observe
-MVELBatchCompiler.compileInvocationCount() to assert that runtime
-builds don't recompile.
-
-Refs #<DRLX-issue-N>
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
+**Implications:**
+- No code change in `DrlxRuleBuilder`.
+- D1 test (Task 7 Step 7.7) imports `org.mvel3.MVELCompiler` and asserts on
+  `MVELCompiler.compileInvocationCount()` directly.
+- D7 architectural guard is unaffected — `MVELCompiler` is not on the forbidden
+  import list.
+- One DRLX commit is dropped.
 
 ---
 
@@ -726,49 +696,28 @@ Skip — no new test needed. (Track in self-review.)
 
 - [ ] **Step 7.7: Write D1 (pre-build → runtime; assert no recompile)**
 
-D1 needs an end-to-end pre-build then runtime build. The test harness mirrors existing `DrlxRuleBuilderTest` patterns:
+D1 needs an end-to-end pre-build then runtime build. Assertions use the
+global static counter `MVELCompiler.compileInvocationCount()` provided by
+Plan 1 (test-only instrumentation). The harness mirrors existing
+`DrlxRuleBuilderTest` patterns; the exact `DrlxRuleBuilder` API methods
+(`preBuild(...)` / `build(...)`) and signatures must be looked up from
+existing tests in the repo and mirrored.
 
+Key assertion shape:
 ```java
-@Test
-void D1_preBuildThenRuntime_loadsWithoutCompile(@TempDir Path tmp) {
-    // System property override so MVEL writes to tmp.
-    String prevPath = System.setProperty("mvel3.compiler.lambda.persistence.path", tmp.toString());
-    String prevReg = System.setProperty("mvel3.compiler.lambda.registry.file",
-            tmp.resolve("lambda-registry.dat").toString());
-    org.mvel3.lambdaextractor.LambdaRuntime.resetSingletonForTests();
-
-    try {
-        String drlx = "package com.example;\nrule R when Person(age > 18) then end";
-        // 1. Pre-build phase.
-        DrlxRuleBuilder preBuilder = new DrlxRuleBuilder(/* configured for pre-build */);
-        // ... build the rule once via the pre-build path; this calls
-        // DrlxPreBuildLambdaCompiler internally and produces metadata + classfiles.
-        preBuilder.buildRule(drlx);
-        DrlxLambdaMetadata metadata = preBuilder.getMetadata();   // adjust to actual API
-        metadata.save(tmp);
-
-        // 2. Reset MVEL state so the runtime build cannot rely on in-memory catalog.
-        org.mvel3.lambdaextractor.LambdaRuntime.getInstance().reset();
-
-        // 3. Runtime build with metadata.
-        DrlxRuleBuilder runtimeBuilder = new DrlxRuleBuilder(/* configured for runtime + metadata */);
-        runtimeBuilder.loadMetadata(DrlxLambdaMetadata.metadataFilePath(tmp));
-        int compilesBeforeRuntime = runtimeBuilder.getBatchCompilerForTests().compileInvocationCount();
-
-        runtimeBuilder.buildRule(drlx);
-
-        int compilesAfterRuntime = runtimeBuilder.getBatchCompilerForTests().compileInvocationCount();
-        assertThat(compilesAfterRuntime).isEqualTo(compilesBeforeRuntime);   // no recompile
-    } finally {
-        if (prevPath == null) System.clearProperty("mvel3.compiler.lambda.persistence.path");
-        else System.setProperty("mvel3.compiler.lambda.persistence.path", prevPath);
-        if (prevReg == null) System.clearProperty("mvel3.compiler.lambda.registry.file");
-        else System.setProperty("mvel3.compiler.lambda.registry.file", prevReg);
-    }
-}
+int before = MVELCompiler.compileInvocationCount();
+runtimeBuilder.build(drlxSource);   // metadata path
+int after = MVELCompiler.compileInvocationCount();
+assertThat(after).isEqualTo(before);   // no recompile in runtime build
 ```
 
-**Adjustment needed:** the test's `DrlxRuleBuilder` constructor signature, pre-build / runtime mode toggles, and the rule-building entry method (`buildRule(...)`) names must match the actual repo API. Inspect an existing `DrlxRuleBuilderTest` test or a pre-build test (if one exists) and mirror its setup pattern. The skeleton above shows the assertion shape; adjust the setup to fit.
+Setup must reset MVEL state between pre-build and runtime build (e.g.,
+`LambdaRuntime.getInstance().reset()`) so the runtime build cannot rely on
+in-memory catalog hits.
+
+**Adjustment needed:** mirror an existing pre-build test or `DrlxRuleBuilderTest`
+case for the actual builder API, system-property toggles for persistence path,
+and metadata save/load flow. The skeleton above only fixes the assertion shape.
 
 - [ ] **Step 7.8: Run D1–D4, D6 — expect PASS**
 
@@ -1006,7 +955,7 @@ Final handover at `/home/tkobayas/claude/public/drlx-parser/HANDOFF.md` should r
 | `DrlxLambdaCompiler.loadPreCompiledEvaluator(ArtifactRef)` via `LambdaArtifactLoader` | Task 4 |
 | `LambdaRegistry.PERSISTENCE_ENABLED` / `DEFAULT_PERSISTENCE_PATH` → `LambdaRuntime` static accessors | Task 5 |
 | `InvalidDrlxLambdaMetadataException` typed exception | Task 2 Step 2.1 |
-| `DrlxRuleBuilder.getBatchCompilerForTests()` bridging seam | Task 6 |
+| ~~`DrlxRuleBuilder.getBatchCompilerForTests()` bridging seam~~ — dropped, D1 uses static `MVELCompiler.compileInvocationCount()` | Task 6 (skipped) |
 | D1 — pre-build → runtime asserts no recompile | Task 7 Step 7.7 |
 | D2 — missing file (not mismatch) | Task 7 Step 7.3 |
 | D3 — wrong format version | Task 7 Step 7.4 |
@@ -1026,8 +975,8 @@ Final handover at `/home/tkobayas/claude/public/drlx-parser/HANDOFF.md` should r
 - `ArtifactRef(String fqn, Path classFile)` — same as Plan 1; used in Steps 2.2, 3.1, 7.5.
 - `DrlxLambdaMetadata.put(String, int, ArtifactRef, String)` — same signature in 2.2 (definition) and 3.1 (call site) and 7.1 (test).
 - `LambdaArtifactLoader.loadOrDefinePersistedClass(ClassManager, ArtifactRef)` — same as Plan 1; used in 4.1, 7.5.
-- `DrlxRuleBuilder.getBatchCompilerForTests()` — defined in 6.2, used in 7.7.
-- `MVELBatchCompiler.getArtifactRef(LambdaHandle)` and `compileInvocationCount()` — defined in Plan 1 Task 6, consumed in Plan 2 Tasks 3 and 7 respectively.
+- `MVELBatchCompiler.getArtifactRef(LambdaHandle)` — defined in Plan 1 Task 6, consumed in Plan 2 Task 3.
+- `MVELCompiler.compileInvocationCount()` — static, defined in Plan 1, consumed directly in Plan 2 Task 7 (D1). Task 6 was a redundant accessor and is dropped.
 
 All references resolve. Plan 2 complete.
 
