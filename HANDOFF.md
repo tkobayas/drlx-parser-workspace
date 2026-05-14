@@ -2,46 +2,40 @@
 
 ## Session goals (done)
 
-1. ✅ **Spec for #39** (Accumulate, parent epic #26) — design completed and written to `specs/2026-05-13-drlx-accumulate-design.md`. Two rounds of Codex review applied (count() zero-arg, scope ownership, qualified-name silent-aliasing, single vs multi lowering wording).
-2. ✅ **Implementation plan for #39** — bite-sized TDD plan at `plans/2026-05-13-drlx-accumulate-implementation.md` (11 tasks, ~700 lines). One round of Codex review applied (sealed-interface vs `PendingAccumulatorIR`).
+Executed Tasks 1–5 of `plans/2026-05-13-drlx-accumulate-implementation.md` inline (TDD: red → green → commit per task). All commits land on `main` in the project repo and reference `#39`.
 
-No code has been written in the project repo yet.
+| Task | Commit | Outcome |
+|---|---|---|
+| 1 | (none) | Baseline 182 tests green; v1 scope comment posted on #39 |
+| 2 | `7939c1a` | Grammar: `accumulateItem` + `accumulateCall`; +6 parser tests |
+| 3 | `6a1581f` | IR: `AccumulatePatternIR` + `AccumulatorIR`; sealed permits extended; +3 tests |
+| 4 | `f44b22b` | Visitor: inline-fold pattern + accumulate items; +4 tests |
+| 5 | `b206546` | Proto: oneof field 4 + new messages; `patternTo/FromProto` helpers; +1 roundtrip test |
 
-## Locked decisions for v1
-
-- **Scope:** forms 1 + 2 only (simple-function + multi-function). No `acc(...)` keyword. Built-ins: `avg`, `sum`, `min`, `max`, `count`.
-- **Binding form:** `(VAR | typeType) identifier '=' accumulateCall` — both `var` and typed (`int`, `double`, `BigDecimal`, generics OK).
-- **Lowering:** N × `SingleAccumulate` sharing cloned source patterns. MultiAccumulate folding is a fast-follow.
-- **Source visibility:** `p` is internal to the accumulate; `avgAge` (result) is visible. Build-time error on late `p` reference.
-- **Qualified names:** parse but build-time reject in v1 (no silent aliasing). Custom-function support deferred.
-- **Validation:** all binding-scope errors are build-time (visitor does no scope check).
+drlx-parser-core suite: **196 green** (was 182).
 
 ## Current state
 
-### Project repo
-- Branch `main`, tip `46f7d2f`. No new commits this session.
-
-### Workspace
-- Spec + plan committed in this session's wrap (see commit at session end). No other uncommitted artifacts.
+- **Project repo** branch `main`, tip `b206546`. No uncommitted tracked changes.
+- **Workspace** clean; spec + plan unchanged since 9e08f37.
 
 ## Immediate next action
 
-**Execute Task 1 of `plans/2026-05-13-drlx-accumulate-implementation.md`** — confirm baseline tests pass (`mvn -f /home/tkobayas/usr/work/mvel3-development/drlx-parser/pom.xml -pl drlx-parser-core -am test`, expect 182 green), post the v1-scope comment on issue #39, then proceed to Task 2 (grammar).
+**Task 6** — create `AccumulateFunctionRegistry` + `DrlxLambdaAccumulator` (`plans/...-implementation.md` line 830+). Registry maps `avg/sum/min/max/count` → Drools `AccumulateFunction` class + result type + zero-arg flag; `DrlxLambdaAccumulator` wraps function + optional value-extractor lambda (Drools-equivalent of `LambdaAccumulator.BindingAcc` but inside `drlx-parser-core`). Steps 6.1–6.6 in the plan.
 
-User's execution preference for tomorrow not yet chosen — offer **subagent-driven** (recommended) vs **inline** at session start.
+Then Tasks 7–10 (single, multi, error paths, full suite) and Task 11 (handover + push, optionally PR + close #39).
 
 ## Gotchas (this session)
 
-- **Sealed interfaces and transient visitor types**: the original plan had `PendingAccumulatorIR implements LhsItemIR`, which can't compile against the sealed permits list. Fixed by inline folding in the visitor (no helper LhsItemIR subtype). See Task 4.5 of the plan.
-- **DRLXXXX lines 824/829** omit `var` for simple-form accumulate. Verified spec-wide: this is a drafting slip, not intentional. Every other accumulate-related example uses `var` (lines 839, 846, 851).
+- **Sealed `LhsItemIR` permits forbid a transient builder type.** Original plan had `PendingAccumulatorIR implements LhsItemIR`. Resolved by holding `pendingPattern: PatternIR` + `pendingAccs: List<AccumulatorIR>` directly in `buildRule` and flushing inline. No new sealed permit beyond `AccumulatePatternIR`.
+- **`identifier` rule in JavaParser already includes `VAR`.** Plan's `(VAR | typeType)` in `accumulateItem` is still correct (it excludes other identifier kinds and admits primitives via `typeType`), but worth knowing if comparing with `boundOopath: identifier identifier`.
+- **House test style uses `parseDrlxCompilationUnitAsAntlrAST`** (throws on parse errors) rather than the plan's standalone `assertNoParseErrors` helper. Adopted the house style for parser tests; visitor tests use raw ANTLR per plan.
 
 ## References
 
 | Topic | Path |
-|-------|------|
+|---|---|
 | Spec | `specs/2026-05-13-drlx-accumulate-design.md` |
 | Plan | `plans/2026-05-13-drlx-accumulate-implementation.md` |
 | Issue | https://github.com/tkobayas/drlx-parser/issues/39 |
-| Parent epic | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Spec source (DRLXXXX §Accumulate) | `~/usr/work/mvel3-development/drlx-parser/docs/DRLXXXX.md` lines 820–890 |
-| Previous handover | `git show HEAD~1:HANDOFF.md` |
+| Yesterday's handover | `git show HEAD~1:HANDOFF.md` |
