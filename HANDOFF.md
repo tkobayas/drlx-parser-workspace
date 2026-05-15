@@ -20,15 +20,18 @@
 
 ## Immediate next action
 
-**Choose the next epic-#26 child to work on.** Open issues from the accumulate-v1 deferrals:
-- MVEL3-backed extractor (lift v1's `binding.property`-only limit — the `complexExtractorExpressionRejectedAsV1Limitation` test in `AccumulateTest.java` is the contract)
-- `MultiAccumulate` folding (N×SingleAccumulate → one node)
-- Inline-from form (`avg(/persons.age)`)
-- `acc()` keyword forms (2/3/5-param)
-- Multi-pattern source via `and(...)`
-- Custom user-imported functions
+**Choose the next epic-#26 child.** The six accumulate v1 deferrals were filed as separate issues this session:
 
-Pick one, run brainstorming → spec → plan as usual. Or pick a different #26 child entirely — `gh issue list --repo tkobayas/drlx-parser --label "parent:#26"` for the full list.
+| # | Title | Priority |
+|---|---|---|
+| **#48** | MVEL3-backed extractor for arbitrary argument expressions | High — lifts the visible v1 limit; `complexExtractorExpressionRejectedAsV1Limitation` test in `AccumulateTest.java` is the contract |
+| #49 | `MultiAccumulate` folding (N×SingleAccumulate → one node) | Medium |
+| #50 | Inline-from form (`avg(/persons.age)`) | Medium |
+| #51 | `acc()` keyword forms (2/3/5-param) | Medium |
+| #52 | Multi-pattern source via `and(...)` (depends on #51) | Medium |
+| #53 | Custom user-imported accumulate functions | Medium |
+
+Recommended start: **#48** — biggest visible v1 limit; test boundary already in place. Pick one, run brainstorming → spec → plan as usual. Or look at non-accumulate #26 children: `gh issue view 26 --repo tkobayas/drlx-parser` shows the full list.
 
 ## Plan deviations (worth knowing)
 
