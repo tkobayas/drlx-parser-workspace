@@ -30,7 +30,16 @@ multiple properties of the same binding.
 | `sum(p.age + 1)` | rejected at build | accepted |
 | `sum(p.age * p.age)` (multiple refs to same binding) | rejected at build | accepted |
 | `sum(p.name.length())` (method call) | rejected at build | accepted |
-| `count()`, `count(p)` | accepted (extractor `null`) | unchanged |
+| `count()`, `count(p)`, `count(<anything>)` | accepted (extractor `null`; argument parsed but not validated) | unchanged |
+
+**`count(expr)` validation:** the argument of `count` is parsed by the
+visitor but its semantic correctness is not validated — the registry
+flags `count` as `acceptsZeroArgs`, so `buildSingleAccumulate` skips
+extractor construction entirely. As a result, `count(garbage)` and
+`count(q.factor)` (where `q` is from outer scope) both parse and run as
+plain `count()`. This matches v1 exactly; #48 does not change it.
+Compile-validating `count`'s argument while still ignoring its runtime
+value is a deliberate future improvement and is out of scope here.
 
 **Out:** references to outer-scope bindings inside an extractor
 expression (e.g. `sum(p.age * q.factor)` where `q` was bound earlier
@@ -88,8 +97,11 @@ on bind).
 1. Build a 1-entry `HashMap` with `{sourceBindingName → fact}`.
 2. Call `evaluator.eval(map)` and return.
 3. Wrap any thrown exception in a `RuntimeException` carrying the
-   expression string and the source class name, mirroring the existing
-   error-wrap style in `DrlxLambdaAccumulator.accumulate`.
+   expression string (read off the stored field), mirroring the existing
+   error-wrap style in `DrlxLambdaAccumulator.accumulate`. The fact's
+   actual class is reachable via `fact.getClass()` at the failure point
+   if a future improvement wants to include it; not stored on the
+   extractor.
 
 ### 3. Call-site change in `DrlxRuleAstRuntimeBuilder`
 
