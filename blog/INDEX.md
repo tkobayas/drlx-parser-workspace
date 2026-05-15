@@ -23,3 +23,4 @@
 | [2026-05-13-tk01-428-plan-2-bridge-that-wasnt.md](2026-05-13-tk01-428-plan-2-bridge-that-wasnt.md) | 2026-05-13 | mvel#428 — Plan 2, and the bridge that wasn't |
 | [2026-05-13-tk02-428-no-persist-and-nul-byte.md](2026-05-13-tk02-428-no-persist-and-nul-byte.md) | 2026-05-13 | mvel#428 — no-persist, and a NUL byte that ate a comment |
 | [2026-05-15-tk01-39-accumulate-v1-shipped.md](2026-05-15-tk01-39-accumulate-v1-shipped.md) | 2026-05-15 | #39 — accumulate v1, and what sum() actually returns |
+| [2026-05-15-tk02-48-extractor-mvel3-path.md](2026-05-15-tk02-48-extractor-mvel3-path.md) | 2026-05-15 | #48 — the extractor gets its MVEL3 path |
