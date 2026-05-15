@@ -2,55 +2,46 @@
 
 ## Session goals (done)
 
-**#39 v1 shipped.** Executed Tasks 6–11 of `plans/2026-05-13-drlx-accumulate-implementation.md` inline (continuing yesterday's Tasks 1–5). Issue closed at project HEAD `538185b`. drlx-parser-core test suite: 182 → 209 green (+27).
+**#48 v1 limit lifted.** Arbitrary expressions over the source binding (`sum(p.age + 1)`, `sum(p.name.length())`, `sum(p.age * p.age)`, `avg(p.age + 1)`) compile through `DrlxLambdaCompiler.createValueExtractor` via MVEL3 map mode. Reflection-based `buildSimpleExtractor`/`isIdentifier`/`findGetter` deleted. `drlx-parser-core` suite: 209 → 213 green. Issue closed at project HEAD `27c528f`.
 
-| Task | Commit | Outcome |
-|---|---|---|
-| 6 | `de442ae` | `AccumulateFunctionRegistry` (5 built-ins) + `DrlxLambdaAccumulator` (wraps Drools `AccumulateFunction` + optional extractor) |
-| 7 | `dbab883` | Runtime-builder lowering: `AccumulatePatternIR` → N × `SingleAccumulate`; reflection extractor for `binding.property`; `MyUnit.results` field for test capture |
-| 8 | `03fe3df` | Multi-function + count + sum end-to-end tests |
-| 9 | `538185b` | Error-path tests: qualified-name, unknown-fn, source-scope isolation, v1 expression-limit |
-| 10 | (regression) | Full module green; all 3 reactor modules compile |
-| 11 | pushed + closed | 8 commits pushed to `origin/main`; #39 closed with v1-shipped summary |
+Five project commits (`1f19670` `8f3c32d` `eea764f` `e85ffca` `27c528f`); four workspace commits (spec, spec-review-fix, plan, blog).
 
 ## Current state
 
-- **Project repo** `main`, tip `538185b`, pushed.
-- **Workspace** `main`, tip `14f9cce` (blog entry); 3 garden entries committed at `~/.hortora/garden` (`cac4fcd`).
+- **Project repo** `main`, tip `27c528f`, pushed to origin.
+- **Workspace** `main`, tip about to advance from `946384a` (blog) once this HANDOFF.md commit lands; will be pushed at session end.
 
 ## Immediate next action
 
-**Choose the next epic-#26 child.** The six accumulate v1 deferrals were filed as separate issues this session:
+**Choose the next epic-#26 child** from the five remaining accumulate follow-ups:
 
 | # | Title | Priority |
 |---|---|---|
-| **#48** | MVEL3-backed extractor for arbitrary argument expressions | High — lifts the visible v1 limit; `complexExtractorExpressionRejectedAsV1Limitation` test in `AccumulateTest.java` is the contract |
 | #49 | `MultiAccumulate` folding (N×SingleAccumulate → one node) | Medium |
 | #50 | Inline-from form (`avg(/persons.age)`) | Medium |
 | #51 | `acc()` keyword forms (2/3/5-param) | Medium |
 | #52 | Multi-pattern source via `and(...)` (depends on #51) | Medium |
 | #53 | Custom user-imported accumulate functions | Medium |
 
-Recommended start: **#48** — biggest visible v1 limit; test boundary already in place. Pick one, run brainstorming → spec → plan as usual. Or look at non-accumulate #26 children: `gh issue view 26 --repo tkobayas/drlx-parser` shows the full list.
+Plus one new prospective follow-up — not yet filed: **outer-binding extractor refs** (e.g. `sum(p.age * q.factor)` where `q` is from outer scope). The map-mode foundation #48 just landed makes this a small delta (more map entries, more decls, signature change on `DrlxLambdaAccumulator`). File it when there's a concrete use case.
 
-## Plan deviations (worth knowing)
+Or look beyond accumulate at non-#26 children: `gh issue list --repo tkobayas/drlx-parser --state open` for the full menu.
 
-- **Task 7 extractor:** Plan called for an MVEL3 batch-compile path on `DrlxLambdaCompiler.createValueExtractor`. I substituted reflection-based simple `binding.property` extraction with a v1-limit test that locks the boundary. Lifting this is the natural Task 7 follow-up.
-- **Task 9 negative tests:** Added a fourth test (`complexExtractorExpressionRejectedAsV1Limitation`) beyond the plan's three, to encode the extractor boundary.
+## Plan deviations
 
-## Gotchas (this session) — submitted to garden
+None worth flagging. Five tasks executed inline as written; Codex spec review caught two medium findings before plan-writing (srcClass error-message promise, count(expr) validation behavior) — both fixed in workspace commit `159680a` and reflected in the plan.
 
-- `SumAccumulateFunction` returns `Double` regardless of input type — `min`/`max` preserve type but `sum` doesn't. Garden: `GE-20260515-dc014f`.
-- Sealed-interface permits forbid transient builder types; fold inline using caller-local state. Garden: `GE-20260515-d6a406`.
-- `SelfReferenceClassFieldReader` lives in `org.drools.base.base.extractors`, not where its `ReadAccessor` interface lives. Garden: `GE-20260515-92a9e8`.
+## Gotchas (this session)
+
+Nothing garden-worthy. The MVEL3-catches-unknown-properties-at-batch-compile finding is logical given map-mode declarations carry types; documented in the blog entry's last section, not in the garden.
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Today's blog | `blog/2026-05-15-tk01-39-accumulate-v1-shipped.md` |
-| Spec | `specs/2026-05-13-drlx-accumulate-design.md` |
-| Plan | `plans/2026-05-13-drlx-accumulate-implementation.md` |
-| Issue (closed) | https://github.com/tkobayas/drlx-parser/issues/39 |
+| Today's blog | `blog/2026-05-15-tk02-48-extractor-mvel3-path.md` |
+| Spec | `specs/2026-05-15-48-accumulate-extractor-mvel3-design.md` |
+| Plan | `plans/2026-05-15-48-accumulate-extractor-mvel3-implementation.md` |
+| Issue (closed) | https://github.com/tkobayas/drlx-parser/issues/48 |
 | Parent epic | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Yesterday's handover | `git show HEAD~2:HANDOFF.md` |
+| Previous handover | `git show HEAD~1:HANDOFF.md` |
