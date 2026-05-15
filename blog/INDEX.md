@@ -22,3 +22,4 @@
 | [2026-05-12-tk02-428-half-the-refactor-plus-a-bridge.md](2026-05-12-tk02-428-half-the-refactor-plus-a-bridge.md) | 2026-05-12 | mvel#428 — half the refactor, plus a bridge commit |
 | [2026-05-13-tk01-428-plan-2-bridge-that-wasnt.md](2026-05-13-tk01-428-plan-2-bridge-that-wasnt.md) | 2026-05-13 | mvel#428 — Plan 2, and the bridge that wasn't |
 | [2026-05-13-tk02-428-no-persist-and-nul-byte.md](2026-05-13-tk02-428-no-persist-and-nul-byte.md) | 2026-05-13 | mvel#428 — no-persist, and a NUL byte that ate a comment |
+| [2026-05-15-tk01-39-accumulate-v1-shipped.md](2026-05-15-tk01-39-accumulate-v1-shipped.md) | 2026-05-15 | #39 — accumulate v1, and what sum() actually returns |
