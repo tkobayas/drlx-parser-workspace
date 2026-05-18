@@ -2,46 +2,48 @@
 
 ## Session goals (done)
 
-**#48 v1 limit lifted.** Arbitrary expressions over the source binding (`sum(p.age + 1)`, `sum(p.name.length())`, `sum(p.age * p.age)`, `avg(p.age + 1)`) compile through `DrlxLambdaCompiler.createValueExtractor` via MVEL3 map mode. Reflection-based `buildSimpleExtractor`/`isIdentifier`/`findGetter` deleted. `drlx-parser-core` suite: 209 → 213 green. Issue closed at project HEAD `27c528f`.
+**#49 MultiAccumulate fold landed.** Multi-function accumulate now emits one `MultiAccumulate` over one source pattern (vs N×`SingleAccumulate`). `BoundVariable` record extended to carry `Declaration`; `collectPatternTypes` widened to iterate per-decl. `drlx-parser-core` suite: 213 → 217. Two structural tests pin both shapes (`SingleAccumulate` for N=1, `MultiAccumulate` for N>1). #49 closed at project HEAD `d36b723`.
 
-Five project commits (`1f19670` `8f3c32d` `eea764f` `e85ffca` `27c528f`); four workspace commits (spec, spec-review-fix, plan, blog).
+Also filed **#54 (outer-binding extractor refs)** as a new epic-#26 child early in the session — small delta on the #48 MVEL3 foundation; owed when a concrete use case appears.
+
+Seven project commits (`c27c80b` → `50049af`, all pushed); workspace commits for spec, plan, blog, this handover.
 
 ## Current state
 
-- **Project repo** `main`, tip `27c528f`, pushed to origin.
-- **Workspace** `main`, tip about to advance from `946384a` (blog) once this HANDOFF.md commit lands; will be pushed at session end.
+- **Project repo** `main`, tip `50049af`, pushed to origin.
+- **Workspace** `main`, advancing from `b27d4d1` (blog) with this handover commit; push at session end.
 
 ## Immediate next action
 
-**Choose the next epic-#26 child** from the five remaining accumulate follow-ups:
+**Choose the next epic-#26 child.** Five remain after #49:
 
 | # | Title | Priority |
 |---|---|---|
-| #49 | `MultiAccumulate` folding (N×SingleAccumulate → one node) | Medium |
 | #50 | Inline-from form (`avg(/persons.age)`) | Medium |
 | #51 | `acc()` keyword forms (2/3/5-param) | Medium |
 | #52 | Multi-pattern source via `and(...)` (depends on #51) | Medium |
 | #53 | Custom user-imported accumulate functions | Medium |
+| #54 | Outer-binding extractor refs (`sum(p.age * q.factor)`) | Medium |
 
-Plus one new prospective follow-up — not yet filed: **outer-binding extractor refs** (e.g. `sum(p.age * q.factor)` where `q` is from outer scope). The map-mode foundation #48 just landed makes this a small delta (more map entries, more decls, signature change on `DrlxLambdaAccumulator`). File it when there's a concrete use case.
-
-Or look beyond accumulate at non-#26 children: `gh issue list --repo tkobayas/drlx-parser --state open` for the full menu.
+Or look beyond epic-#26: `gh issue list --repo tkobayas/drlx-parser --state open`.
 
 ## Plan deviations
 
-None worth flagging. Five tasks executed inline as written; Codex spec review caught two medium findings before plan-writing (srcClass error-message promise, count(expr) validation behavior) — both fixed in workspace commit `159680a` and reflected in the plan.
+Two rounds of Codex review caught three findings before any code ran. **Spec review** surfaced the binding-model gap (`Pattern.getDeclaration()` is `null` on unnamed multi-decl wrap) — required extending `BoundVariable` and widening `collectPatternTypes`; absorbed into scope. **Plan review** caught (a) structural tests asserting `Integer.class` for `min`/`max` when the registry says `Comparable.class`, (b) a wrong `ReadAccessor` import (`base.base.ReadAccessor` doesn't exist — correct is `rule.accessor.ReadAccessor`) that would have failed to compile, (c) `Pattern.getDeclaration()` vs `getDeclarations().get(name)` divergence in `wrapResultPattern`. All three fixed inline before execution.
 
 ## Gotchas (this session)
 
-Nothing garden-worthy. The MVEL3-catches-unknown-properties-at-batch-compile finding is logical given map-mode declarations carry types; documented in the blog entry's last section, not in the garden.
+One garden-worthy: **`Pattern.getDeclaration()` and `Pattern.getDeclarations().get(name)` can return DIFFERENT declarations for the same identifier when `addDeclaration` overwrites the map post-construction.** Submitted as `GE-20260518-aff469` (jvm domain, score 13 + 3 bonus, auto-approve eligible). Not in any Drools docs — only `Pattern.java` lines 100-104 and 305-310 tell the story. Future Drools work building multi-decl Patterns should default to `getDeclarations().get(name)`.
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Today's blog | `blog/2026-05-15-tk02-48-extractor-mvel3-path.md` |
-| Spec | `specs/2026-05-15-48-accumulate-extractor-mvel3-design.md` |
-| Plan | `plans/2026-05-15-48-accumulate-extractor-mvel3-implementation.md` |
-| Issue (closed) | https://github.com/tkobayas/drlx-parser/issues/48 |
+| Today's blog | `blog/2026-05-18-tk01-49-multiaccumulate-fold.md` |
+| Spec | `specs/2026-05-18-49-multiaccumulate-folding-design.md` |
+| Plan | `plans/2026-05-18-49-multiaccumulate-folding-implementation.md` |
+| Issue #49 (closed) | https://github.com/tkobayas/drlx-parser/issues/49 |
+| Issue #54 (open — outer-binding refs) | https://github.com/tkobayas/drlx-parser/issues/54 |
+| Garden entry (Pattern API trap) | `~/.hortora/garden/jvm/GE-20260518-aff469.md` |
 | Parent epic | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Previous handover | `git show HEAD~1:HANDOFF.md` |
+| Previous handover | `git show f3829ec:HANDOFF.md` |
