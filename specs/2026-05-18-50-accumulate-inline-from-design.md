@@ -63,14 +63,24 @@ when adjacent.
   `oopathExpression ('.' identifier)?`. If a use case appears, it gets
   its own issue.
 
+**Composes with bound patterns** (not rejected):
+
+A bound pattern immediately followed by an inline-from accumulator
+(e.g. `var t : /thresholds, var n = count(/persons), do {...}`) flushes
+the bound pattern as a normal LHS item and starts a separate synthetic
+accumulate. Even the same-source case
+(`var p : /persons, var avgAge = avg(/persons.age)`) parses — it
+produces two separate `/persons` source-pattern joins, which is
+wasteful but semantically correct. Recognising same-source equivalence
+to merge them is out of scope for #50.
+
 **Rejected (build error):**
 
-- Inline-from after a bound pattern in the same accumulate group
-  (`var p : /persons, var avgAge = avg(/persons.age)`) — see Error
-  handling below. Rationale: avoids the question of source equivalence
-  (the bound `/persons` pattern instance is distinct from a synthetic
-  one even when the oopath text matches) and keeps the inline-from
-  model uniform — it always synthesises its own source.
+- Final-dot extractor on a zero-arg function (`count(/persons.age)`).
+  Without this check, today's runtime silently ignores the extractor
+  (`buildSingleAccumulator` skips extractor construction for
+  `acceptsZeroArgs` functions even when `argCount == 1`), masking
+  typos. Visitor rejects with a precise message — see Error handling.
 - Bare oopath without final-dot for non-zero-arg functions
   (`avg(/persons)`) — caught by the existing arity check inside
   `buildSingleAccumulator`.
@@ -187,20 +197,29 @@ if itemCtx.accumulateItem != null:
         oopathCtx     = call.inlineFromOopath.oopathExpression
         finalDotIdent = call.inlineFromOopath.identifier (or null)
         oopathText    = oopathCtx.getText()         // ANTLR strips hidden-channel whitespace
+        functionName  = call.qualifiedName.getText()
 
-        if pendingPattern != null and !pendingIsSynthetic:
-            throw "inline-from accumulator cannot follow a bound pattern in rule '<R>'; "
-                + "use the bound form 'avg(p.age)' or remove the preceding 'var p :' pattern"
+        // Zero-arg-function guard: count(/persons.age) etc would silently
+        // ignore the .age extractor in buildSingleAccumulator — reject early.
+        if finalDotIdent != null AND AccumulateFunctionRegistry.resolve(functionName).acceptsZeroArgs():
+            throw "function '<functionName>' does not accept a final-dot extractor in rule '<R>'; "
+                + "use '<functionName>(<oopath>)' instead"
 
-        if pendingPattern == null OR pendingSynthOopath != oopathText:
-            // flush prior fold (if any), open a new synthetic source pattern
+        // Fold-or-flush dispatch.
+        // - synthetic pendingPattern + matching oopath text → fold onto it
+        // - otherwise (null, synthetic-with-different-oopath, OR bound) → flush
+        //   and open a new synthetic. The bound case flushes the prior pattern
+        //   as a normal LHS item (or as a bound-form AccumulatePatternIR if it
+        //   already accrued accumulators) and starts fresh.
+        if pendingPattern != null AND pendingIsSynthetic AND pendingSynthOopath == oopathText:
+            ; // fold: reuse pendingPattern, just add accumulator below
+        else:
             flushPending(lhs, pendingPattern, pendingAccs)
             String synthName  = "$inline" + inlineCounter++
             pendingPattern     = buildPatternFromOopath(oopathCtx, synthName)
             pendingAccs        = new ArrayList<>()
             pendingIsSynthetic = true
             pendingSynthOopath = oopathText
-        // else: fold — reuse pendingPattern (same synthetic binding) and add to pendingAccs
 
         synthName = pendingPattern.bindName()
         pendingAccs.add(buildAccumulator(itemCtx.accumulateItem, synthName, finalDotIdent))
@@ -339,18 +358,20 @@ Runtime builder:
 
 | Failure point | Where caught | Message |
 |---|---|---|
-| Inline-from after a bound pattern | `DrlxToRuleAstVisitor.buildRule` (new throw) | `inline-from accumulator cannot follow a bound pattern in rule '<R>'; use the bound form 'avg(p.age)' or remove the preceding 'var p :' pattern` |
+| Final-dot extractor on a zero-arg function (e.g. `count(/persons.age)`) | `DrlxToRuleAstVisitor.buildRule` (new throw) | `function 'count' does not accept a final-dot extractor in rule '<R>'; use 'count(/persons)' instead` |
 | Regular accumulate without preceding pattern | `DrlxToRuleAstVisitor.buildRule` (existing throw, unchanged) | `accumulate item without a preceding pattern in rule '<R>'` |
 | Bare oopath for non-zero-arg function (e.g. `avg(/persons)`) | `DrlxRuleAstRuntimeBuilder.buildSingleAccumulator` (existing arity check, unchanged) | `function 'avg' requires exactly 1 argument, got 0` |
 | Final-dot extractor references a property the source class doesn't have (e.g. `avg(/persons.nope)`) | `DrlxLambdaCompiler.createValueExtractor` via MVEL3 type-check (existing #48 path) | MVEL3's "unknown identifier" build-time exception, wrapped per #48 |
 | Unknown accumulate function | `AccumulateFunctionRegistry.resolve` (existing) | unchanged |
 
-The mixing-rejection happens at visitor time (purely structural — bound
-`pendingPattern` followed by inline-from `accumulateItem`) rather than
-at the runtime builder. This is the right layer: the visitor already
-distinguishes the two forms because it built the `pendingPattern`
-itself; the runtime builder sees only an opaque `PatternIR` and would
-have to reconstruct that distinction.
+The zero-arg-function guard happens at visitor time because the visitor
+already knows whether a final-dot identifier was supplied and the
+function-name string. Resolving against
+`AccumulateFunctionRegistry.acceptsZeroArgs()` from the visitor is
+fine — the registry is a static map. A user-imported custom function
+(out of scope, #53) that turns out to accept zero args would not be
+covered by this check; that's a deliberate gap to be revisited under
+#53.
 
 ## Testing
 
@@ -363,7 +384,8 @@ All in `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/Accumulate
 | `inlineFromAvg` | `var avgAge = avg(/persons.age), do { results.add(avgAge); }` | `containsExactly(40.0)` for persons aged 20/40/60 — proves the synthetic source, the rewritten extractor `$inline0.age`, and the avg function wire up |
 | `inlineFromCount` | `long n = count(/persons), do { results.add(n); }` | `containsExactly(2L)` for 2 persons inserted — proves the bare-oopath / zero-arg form |
 | `inlineFromMultiFunctionFoldsSameSource` | `var minAge = min(/persons.age), var maxAge = max(/persons.age), var avgAge = avg(/persons.age)` + consequence adding all three to `results` | `containsExactly(20, 60, 40.0)` — proves multi-function fold and that the result flows through the `collectPatternTypes` change made in #49 |
-| `inlineFromWithSourceConstraint` | `var totalLondon = sum(/persons[location == "london"].age)` | proves the oopath's `[...]` constraints carry into the synthesised source pattern |
+| `inlineFromWithSourceConstraint` | `var totalSenior = sum(/persons[age >= 40].age)` | proves the oopath's `[...]` constraints carry into the synthesised source pattern — the `Person` test domain has `age`, not `location` |
+| `inlineFromComposesWithBoundPattern` | `var p : /persons[age >= 18], var n = count(/persons), do { results.add(p.name); results.add(n); }` | proves a bound pattern adjacent to an inline-from coexists — bound `p` becomes a regular LhsItem, count(/persons) emits a separate AccumulatePatternIR. With persons "A"/20 and "B"/40 inserted: two firings, each adding the person's name and the count of all persons. |
 
 ### New structural tests (AST shape — no `KieSession`)
 
@@ -382,7 +404,7 @@ Same harness pattern as #49's `singleFunctionEmitsSingleAccumulate` /
 
 | Test | Rule fragment | Expects |
 |---|---|---|
-| `inlineFromAfterBoundPatternRejected` | `var p : /persons, var avgAge = avg(/persons.age)` | build throws `RuntimeException` containing `"inline-from accumulator cannot follow a bound pattern"` |
+| `inlineFromCountWithFinalDotRejected` | `long n = count(/persons.age)` | build throws `RuntimeException` containing `"function 'count' does not accept a final-dot extractor"` |
 | `inlineFromBareOopathRejectedForNonZeroArg` | `var avgAge = avg(/persons)` | build throws `RuntimeException` containing `"function 'avg' requires exactly 1 argument, got 0"` (existing arity error, surfaced on the inline-from path) |
 | `inlineFromUnknownPropertyFailsAtBuild` | `var avgAge = avg(/persons.nope)` | MVEL3 build-time error from #48's extractor compile path |
 
