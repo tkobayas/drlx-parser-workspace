@@ -31,14 +31,16 @@ in the accumulate's inner scope. Downstream of the visitor, the
 `AccumulatePatternIR` shape is identical to what the bound form produces;
 `DrlxRuleAstRuntimeBuilder` is unchanged.
 
-Two **adjacent** inline-from accumulators whose oopath text is textually
-identical fold onto the same synthetic source pattern, producing one
-`MultiAccumulate` via the #49 path. "Adjacent" means consecutive
-`accumulateItem`s in the rule body with no intervening LHS item — any
-non-accumulate item (`test`, group element, etc.) between them flushes
-the pending fold, so a later inline-from with the same oopath text
-synthesises a fresh source pattern. Distinct sources never fold even
-when adjacent.
+Each inline-from accumulator produces its own `AccumulatePatternIR`
+with its own synthetic source pattern — no fold by oopath equivalence.
+This mirrors Drools' DRL convention: `MVELAccumulateBuilder.isMultiFunction()`
+(`drools-mvel/.../MVELAccumulateBuilder.java:144`) only treats functions
+inside one `accumulate(...)` block as multi-function; two separate
+`from accumulate(...)` clauses with textually identical source patterns
+are emitted as two independent `SingleAccumulate`s and not merged.
+The bound multi-function form (#49) continues to fold because adjacency
+to a single bound source is the DRLX analog of DRL's in-block grouping —
+the user explicitly groups functions under one declared source.
 
 ## Scope
 
@@ -46,11 +48,11 @@ when adjacent.
 
 | Input | Lowered to |
 |---|---|
-| `var avgAge = avg(/persons.age)` | `var $inline0 : /persons, var avgAge = avg($inline0.age)` → `SingleAccumulate` |
-| `long n = count(/persons)` (bare oopath, zero-arg function) | `var $inline0 : /persons, long n = count()` → `SingleAccumulate` |
-| `var minAge = min(/persons.age), var maxAge = max(/persons.age), var avgAge = avg(/persons.age)` (adjacent, same-source) | one synthetic `$inline0 : /persons` shared by all three → `MultiAccumulate` (N=3) |
-| `var personAvg = avg(/persons.age), var seniorAvg = avg(/seniors.age)` (adjacent, different sources) | two separate `AccumulatePatternIR`s, each with its own synthetic source |
-| Inline-from with source-pattern constraints (`avg(/persons[location == "london"].age)`) | oopath's `[...]` constraints flow into the synthesised source pattern unchanged |
+| `var avgAge = avg(/persons.age)` | `var $inline0 : /persons, var avgAge = avg($inline0.age)` → one `SingleAccumulate` |
+| `long n = count(/persons)` (bare oopath, zero-arg function) | `var $inline0 : /persons, long n = count()` → one `SingleAccumulate` |
+| `var minAge = min(/persons.age), var maxAge = max(/persons.age)` (two adjacent inline-from items) | two separate `AccumulatePatternIR`s, fresh synthetic source pattern each (`$inline0` for min, `$inline1` for max) → two `SingleAccumulate`s. Source patterns are NOT folded even when textually identical — matches DRL behavior for separate `from accumulate(...)` clauses. |
+| `var personAvg = avg(/persons.age), var seniorAvg = avg(/seniors.age)` | same: two separate `AccumulatePatternIR`s, each with its own synthetic source |
+| Inline-from with source-pattern constraints (`avg(/persons[age >= 40].age)`) | oopath's `[...]` constraints flow into the synthesised source pattern unchanged |
 
 **Out (filed elsewhere):**
 
@@ -98,11 +100,11 @@ to merge them is out of scope for #50.
                        │
                        ▼
               ┌────────────────────┐
-              │ DrlxToRuleAst-     │   visitor synthesises:
-              │ Visitor.buildRule  │   - PatternIR with synthetic bindName
-              │ (fold loop)        │   - AccumulatorIR with rewritten
-              └────────┬───────────┘     argExpression / referencedBindings
-                       │   (folds same-source adjacent inline-froms)
+              │ DrlxToRuleAst-     │   for each inline-from item:
+              │ Visitor.buildRule  │   - flush prior pending pattern
+              │                    │   - synthesise PatternIR with $inlineN
+              └────────┬───────────┘   - emit AccumulatePatternIR with one accumulator
+                       │
                        ▼
               ┌────────────────────┐
               │ AccumulatePatternIR│   shape identical to bound form
@@ -113,8 +115,8 @@ to merge them is out of scope for #50.
               ┌────────────────────┐
               │ DrlxRuleAst-       │   unchanged: builds source Pattern
               │ RuntimeBuilder     │   from PatternIR, dispatches to
-              │ .buildAccumulate-  │   SingleAccumulate / MultiAccumulate
-              │ Pattern            │   per the #49 N-dispatch
+              │ .buildAccumulate-  │   SingleAccumulate per the existing
+              │ Pattern            │   N=1 path                
               └────────────────────┘
 ```
 
@@ -175,18 +177,20 @@ the syntactic shape; semantic validation runs at IR-build time.
 
 One file: `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxToRuleAstVisitor.java`.
 
-### Fold-state extension in `buildRule`
+### One new piece of state in `buildRule`
 
-The existing fold tracks one pending pattern and its accrued
-accumulators. Inline-from adds three pieces of state:
+The existing fold tracks one pending pattern and its accrued accumulators.
+Inline-from adds only a per-rule counter for the synthetic binding name:
 
 ```java
 PatternIR pendingPattern = null;
 List<AccumulatorIR> pendingAccs = new ArrayList<>();
-boolean pendingIsSynthetic = false;     // NEW: pendingPattern came from inline-from synthesis
-String  pendingSynthOopath = null;      // NEW: oopath text, for fold-equivalence check
 int     inlineCounter = 0;              // NEW: per-rule synthetic-name counter
 ```
+
+No fold-state tracking — each inline-from accumulator flushes any pending
+pattern and produces its own `AccumulatePatternIR` immediately. This is
+mechanically the same shape as the bound form's single-function path.
 
 ### Per-item dispatch (inside the `for (RuleItemContext itemCtx : ...)` loop)
 
@@ -196,7 +200,6 @@ if itemCtx.accumulateItem != null:
     if call.inlineFromOopath != null:               // alt 1 — inline-from
         oopathCtx     = call.inlineFromOopath.oopathExpression
         finalDotIdent = call.inlineFromOopath.identifier (or null)
-        oopathText    = oopathCtx.getText()         // ANTLR strips hidden-channel whitespace
         functionName  = call.qualifiedName.getText()
 
         // Zero-arg-function guard: count(/persons.age) etc would silently
@@ -205,36 +208,28 @@ if itemCtx.accumulateItem != null:
             throw "function '<functionName>' does not accept a final-dot extractor in rule '<R>'; "
                 + "use '<functionName>(<oopath>)' instead"
 
-        // Fold-or-flush dispatch.
-        // - synthetic pendingPattern + matching oopath text → fold onto it
-        // - otherwise (null, synthetic-with-different-oopath, OR bound) → flush
-        //   and open a new synthetic. The bound case flushes the prior pattern
-        //   as a normal LHS item (or as a bound-form AccumulatePatternIR if it
-        //   already accrued accumulators) and starts fresh.
-        if pendingPattern != null AND pendingIsSynthetic AND pendingSynthOopath == oopathText:
-            ; // fold: reuse pendingPattern, just add accumulator below
-        else:
-            flushPending(lhs, pendingPattern, pendingAccs)
-            String synthName  = "$inline" + inlineCounter++
-            pendingPattern     = buildPatternFromOopath(oopathCtx, synthName)
-            pendingAccs        = new ArrayList<>()
-            pendingIsSynthetic = true
-            pendingSynthOopath = oopathText
+        // Flush any prior pending pattern (synthetic or bound) — inline-from
+        // always opens its own synthetic source. No fold.
+        flushPending(lhs, pendingPattern, pendingAccs)
 
-        synthName = pendingPattern.bindName()
-        pendingAccs.add(buildAccumulator(itemCtx.accumulateItem, synthName, finalDotIdent))
+        String synthName    = "$inline" + inlineCounter++
+        PatternIR synthSrc  = buildPatternFromOopath(oopathCtx, synthName)
+        AccumulatorIR accIr = buildAccumulator(itemCtx.accumulateItem, synthName, finalDotIdent)
+
+        // Emit immediately as its own AccumulatePatternIR — no pending state needed.
+        lhs.add(new AccumulatePatternIR(synthSrc, List.of(accIr)))
+        pendingPattern = null
+        pendingAccs    = new ArrayList<>()
     else:                                           // alt 2 — regular
         if pendingPattern == null:
             throw "accumulate item without a preceding pattern in rule '<R>'"   // existing
         pendingAccs.add(buildAccumulator(itemCtx.accumulateItem))                // existing
     continue
 
-// Non-accumulate item path (unchanged) — but also reset the two new flags:
+// Non-accumulate item path: unchanged from today.
 flushPending(lhs, pendingPattern, pendingAccs)
-pendingPattern     = null
-pendingAccs        = new ArrayList<>()
-pendingIsSynthetic = false
-pendingSynthOopath = null
+pendingPattern = null
+pendingAccs    = new ArrayList<>()
 ... existing branches for rulePattern / notElement / etc ...
 ```
 
@@ -320,22 +315,26 @@ Runtime builder (unchanged):
 
 ```
 Visitor:
-  // First accumulator: pendingPattern==null → synthesise
-  pendingPattern    = PatternIR(typeName="", bindName="$inline0", entryPoint="persons", ...)
-  pendingSynthOopath = "/persons"
-  pendingAccs       = [AccumulatorIR(min, ["$inline0.age"], ["$inline0"])]
+  // First accumulator: emit immediately with $inline0
+  lhs.add(AccumulatePatternIR(
+            PatternIR(typeName="", bindName="$inline0", entryPoint="persons", ...),
+            [AccumulatorIR(min, ["$inline0.age"], ["$inline0"])]))
 
-  // Second accumulator: same oopath text → fold
-  pendingAccs.add(AccumulatorIR(max, ["$inline0.age"], ["$inline0"]))
+  // Second accumulator: emit immediately with $inline1 (fresh synthetic)
+  lhs.add(AccumulatePatternIR(
+            PatternIR(typeName="", bindName="$inline1", entryPoint="persons", ...),
+            [AccumulatorIR(max, ["$inline1.age"], ["$inline1"])]))
 
-  // End of rule: flushPending emits AccumulatePatternIR(srcPatternIR, [min, max])
+Runtime builder (existing single-accumulate path, twice):
+  For each AccumulatePatternIR:
+    srcPattern = Pattern(Person.class, "$inlineN")
+    acc        = DrlxLambdaAccumulator(MinFn or MaxFn, extractor)
+    single     = SingleAccumulate(srcPattern, [], acc)
+    wrap       = typed result Pattern named "minAge" or "maxAge"
 
-Runtime builder (#49 path, unchanged):
-  srcPattern = Pattern(Person.class, "$inline0")
-  accs       = [DrlxLambdaAccumulator(MinFn, ...), DrlxLambdaAccumulator(MaxFn, ...)]
-  multi      = MultiAccumulate(srcPattern, Declaration[0], accs, 2)
-  wrap       = unnamed Object[] Pattern with [minAge → ArrayElementReader(self, 0, Comparable),
-                                              maxAge → ArrayElementReader(self, 1, Comparable)]
+Note: the Rete network has TWO source-pattern joins on /persons rather than
+one — matches DRL's behavior for separate `from accumulate(...)` clauses.
+Optimisation by source-equivalence is out of scope.
 ```
 
 ### `long n = count(/persons)`
@@ -383,7 +382,7 @@ All in `drlx-parser-core/src/test/java/org/drools/drlx/builder/syntax/Accumulate
 |---|---|---|
 | `inlineFromAvg` | `var avgAge = avg(/persons.age), do { results.add(avgAge); }` | `containsExactly(40.0)` for persons aged 20/40/60 — proves the synthetic source, the rewritten extractor `$inline0.age`, and the avg function wire up |
 | `inlineFromCount` | `long n = count(/persons), do { results.add(n); }` | `containsExactly(2L)` for 2 persons inserted — proves the bare-oopath / zero-arg form |
-| `inlineFromMultiFunctionFoldsSameSource` | `var minAge = min(/persons.age), var maxAge = max(/persons.age), var avgAge = avg(/persons.age)` + consequence adding all three to `results` | `containsExactly(20, 60, 40.0)` — proves multi-function fold and that the result flows through the `collectPatternTypes` change made in #49 |
+| `inlineFromMultipleSameSource` | `var minAge = min(/persons.age), var maxAge = max(/persons.age), var avgAge = avg(/persons.age)` + consequence adding all three to `results` | `containsExactly(20, 60, 40.0)` — proves multiple inline-from items each produce an independent `SingleAccumulate` with its own synthetic source pattern, and all three result bindings are visible to the consequence |
 | `inlineFromWithSourceConstraint` | `var totalSenior = sum(/persons[age >= 40].age)` | proves the oopath's `[...]` constraints carry into the synthesised source pattern — the `Person` test domain has `age`, not `location` |
 | `inlineFromComposesWithBoundPattern` | `var p : /persons[age >= 18], var n = count(/persons), do { results.add(p.name); results.add(n); }` | proves a bound pattern adjacent to an inline-from coexists — bound `p` becomes a regular LhsItem, count(/persons) emits a separate AccumulatePatternIR. With persons "A"/20 and "B"/40 inserted: two firings, each adding the person's name and the count of all persons. |
 
@@ -397,8 +396,8 @@ Same harness pattern as #49's `singleFunctionEmitsSingleAccumulate` /
 | Test | Rule fragment | Asserts |
 |---|---|---|
 | `inlineFromSynthesisesSourcePattern` | `var avgAge = avg(/persons.age)` | LHS has one accumulate result Pattern; its `getSource()` is `SingleAccumulate`; the underlying source `Pattern.getDeclaration().getIdentifier()` starts with `$inline`; result Pattern has one declaration named `avgAge` |
-| `inlineFromMultiFunctionEmitsOneMultiAccumulate` | `var minAge = min(/persons.age), var maxAge = max(/persons.age)` | exactly one result Pattern; `getSource()` is `MultiAccumulate` with `getAccumulators().length == 2`; the `MultiAccumulate.getSource()` source pattern instance is the same for both accumulators (one source binding, not two) |
-| `inlineFromDifferentSourcesDoNotFold` | `var personAvg = avg(/persons.age), var seniorAvg = avg(/seniors.age)` | two separate accumulate result Patterns under the rule LHS; each `getSource()` is `SingleAccumulate`; underlying source patterns have different `ObjectType` |
+| `inlineFromMultipleEmitsSeparateSingleAccumulates` | `var minAge = min(/persons.age), var maxAge = max(/persons.age)` | two distinct accumulate result Patterns under the rule LHS; each `getSource()` is `SingleAccumulate`; each underlying source `Pattern` has a different identifier (`$inline0` vs `$inline1`). Proves no fold-by-source-equivalence and matches DRL behavior for separate accumulate clauses. |
+| `inlineFromDifferentSourceTypes` | `var personAvg = avg(/persons.age), var seniorAvg = avg(/seniors.age)` | same shape as above — two separate `SingleAccumulate`s; underlying source patterns have different `ObjectType`s |
 
 ### Negative tests
 
@@ -454,4 +453,6 @@ in front of the inline-from alternative — costs one line.
 | Grammar to extend | `drlx-parser-core/src/main/antlr4/org/drools/drlx/parser/DrlxParser.g4` (`accumulateCall`, line ~207) |
 | Visitor to extend | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxToRuleAstVisitor.java` (`buildRule` fold loop, ~line 99; `buildAccumulator`, ~line 265; `buildPatternFromOopath`, ~line 413) |
 | Runtime builder (unchanged, for reference) | `drlx-parser-core/src/main/java/org/drools/drlx/builder/DrlxRuleAstRuntimeBuilder.java` (`buildAccumulatePattern`, line 405) |
+| Drools DRL precedent — no fold across separate `accumulate(...)` clauses | `~/usr/work/mvel3-development/drools/drools-mvel/src/main/java/org/drools/mvel/builder/MVELAccumulateBuilder.java:144` (`isMultiFunction()` dispatch — applies per `AccumulateDescr`, never across multiple Descrs) |
+| Drools DRL `AccumulateDescr.isMultiFunction()` | `~/usr/work/mvel3-development/drools/drools-drl/drools-drl-ast/src/main/java/org/drools/drl/ast/descr/AccumulateDescr.java:223` |
 | DRLXXXX §Accumulate | `docs/DRLXXXX.md` line ~855 |
