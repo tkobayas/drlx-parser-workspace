@@ -2,30 +2,36 @@
 
 ## Session goals (completed)
 
-**#50 inline-from implemented and pushed.** Spec from previous session → plan → implementation → 226 tests green → pushed to `main`.
+**#51 spec designed and reviewed.** Brainstorming → design → 6 rounds of Codex review → all findings addressed. Spec ready for implementation planning.
+
+**#50 closed** on GitHub (shipped previous session).
 
 ## Current state
 
-- **Project repo** `main`, tip `713d55f`, pushed.
-- **Workspace** `main`, tip `8cb6c79` (plan + blog committed); push at session end.
-- Issue **#50** ready to close (all scope items shipped).
+- **Project repo** `main`, tip `713d55f`, pushed. No changes this session.
+- **Workspace** `main`, spec uncommitted (`specs/2026-05-19-51-acc-keyword-forms-design.md`).
+- Issue **#51** open, spec complete, no implementation yet.
 
 ## Immediate next action
 
-**Pick the next issue under epic #26.** Candidates: #51 (acc keyword forms), #52 (and-source in inline-from), #53 (custom accumulate functions), #54 (outer-binding refs in extractors). Check the epic for priority.
+**Invoke `writing-plans` skill** to create the implementation plan from the spec at `specs/2026-05-19-51-acc-keyword-forms-design.md`. Then implement.
 
 ## Key decisions this session
 
-- Per-item synthetic source, no fold — confirmed and implemented. Each inline-from item gets its own `$inlineN` source and `SingleAccumulate`. Matches DRL convention for separate `from accumulate(...)` clauses.
-- Grammar dispatches on `/` prefix — no ANTLR ambiguity warning, no semantic predicate needed.
+- Custom acc uses MVEL3 map-based evaluators (action/reverse/result), not generated classes like exec-model
+- Init vars are literal-only, populated programmatically — no MVEL3 evaluator for init
+- `acc` is contextual (parsed as identifier, not lexer token)
+- `var` rejected for init vars and result bindings — explicit types required
+- Source binding removed from map in `finally` after action/reverse
+- Result expression compiled with resolved result class, not Object
+- Paired `(action, reverse)` rejected in 5-param form
+- `and(...)` source deferred to #52, outer-binding refs to #54
 
 ## References
 
 | Topic | Path |
 |---|---|
-| #50 spec | `specs/2026-05-18-50-accumulate-inline-from-design.md` |
-| #50 plan | `plans/2026-05-19-50-accumulate-inline-from-implementation.md` |
-| Blog entry | `blog/2026-05-19-tk01-50-inline-from-shorthand.md` |
-| Issue #50 | https://github.com/tkobayas/drlx-parser/issues/50 |
+| #51 spec | `specs/2026-05-19-51-acc-keyword-forms-design.md` |
+| Issue #51 | https://github.com/tkobayas/drlx-parser/issues/51 |
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Previous handover | `git show 9174167:HANDOFF.md` |
+| Previous handover | `git show 916749e:HANDOFF.md` |
