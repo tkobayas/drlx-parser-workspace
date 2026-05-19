@@ -25,3 +25,4 @@
 | [2026-05-15-tk01-39-accumulate-v1-shipped.md](2026-05-15-tk01-39-accumulate-v1-shipped.md) | 2026-05-15 | #39 — accumulate v1, and what sum() actually returns |
 | [2026-05-15-tk02-48-extractor-mvel3-path.md](2026-05-15-tk02-48-extractor-mvel3-path.md) | 2026-05-15 | #48 — the extractor gets its MVEL3 path |
 | [2026-05-18-tk01-49-multiaccumulate-fold.md](2026-05-18-tk01-49-multiaccumulate-fold.md) | 2026-05-18 | #49 — folding to one MultiAccumulate (with a Pattern API surprise) |
+| [2026-05-19-tk01-50-inline-from-shorthand.md](2026-05-19-tk01-50-inline-from-shorthand.md) | 2026-05-19 | #50 — inline-from: the shorthand that was secretly boring |
