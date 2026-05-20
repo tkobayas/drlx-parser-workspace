@@ -26,3 +26,4 @@
 | [2026-05-15-tk02-48-extractor-mvel3-path.md](2026-05-15-tk02-48-extractor-mvel3-path.md) | 2026-05-15 | #48 — the extractor gets its MVEL3 path |
 | [2026-05-18-tk01-49-multiaccumulate-fold.md](2026-05-18-tk01-49-multiaccumulate-fold.md) | 2026-05-18 | #49 — folding to one MultiAccumulate (with a Pattern API surprise) |
 | [2026-05-19-tk01-50-inline-from-shorthand.md](2026-05-19-tk01-50-inline-from-shorthand.md) | 2026-05-19 | #50 — inline-from: the shorthand that was secretly boring |
+| [2026-05-20-tk01-51-acc-keyword-forms.md](2026-05-20-tk01-51-acc-keyword-forms.md) | 2026-05-20 | #51 — acc() keyword forms: spec to code in one session |
