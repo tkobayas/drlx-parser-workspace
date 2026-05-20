@@ -2,31 +2,28 @@
 
 ## Session goals (completed)
 
-**mvel/mvel#432 fixed and merged.** Map evaluator `++`/`--` write-back — 1 commit on `increment-write-back` branch, PR merged upstream. 746 MVEL tests pass, 255 drlx-parser tests pass.
+**#52 spec written and architecture-reviewed.** Multi-pattern source via `and(...)` for all acc forms. Spec includes runtime plumbing gaps (tuple-aware extraction) identified during deep self-review.
 
 ## Current state
 
-- **Project repo** `main`, tip `fa203da`, clean. Pushed (was 8 ahead last session, now current).
-- **MVEL repo** branch `increment-write-back`, tip `91e64d0c`, clean. PR merged to `mvel/mvel` main.
-- **Workspace** `main`, blog entry + handover uncommitted.
-- Issue **#51** closed. Issue **mvel/mvel#432** open (PR merged, issue not closed).
+- **Project repo** `main`, tip `fa203da`, clean. No code changes this session.
+- **Workspace** `main`, spec uncommitted.
 
 ## Immediate next action
 
-**Pick next issue from epic #26.** The MVEL3 detour is done. Optionally update drlx-parser accumulate tests to use `count++` instead of `count = count + 1` workaround (not urgent — both work).
+**Invoke `writing-plans` skill to create the implementation plan from `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md`.** The spec is approved and ready. Task #6 in the brainstorming checklist is pending.
 
 ## Key decisions this session
 
-- Postfix `++`/`--` converted to prefix before wrapping in `context.put()` — postfix returns old value, which would write wrong value to map
-- List context gets the same treatment as Map context (symmetric)
+- **Approach A chosen:** widen IR `source` from `PatternIR` to `LhsItemIR` — no new types, reuses sealed hierarchy
+- **All acc forms** (2/3/4/5-param) get multi-pattern support, not just 2-param
+- **Three runtime gaps identified:** `DrlxLambdaAccumulator`, `DrlxValueExtractor`, and `DrlxCustomAccumulator` all assume single-source `handle.getObject()` — must use `innerDecls` + tuple for multi-pattern
 
 ## References
 
 | Topic | Path |
 |---|---|
-| MVEL3 issue | https://github.com/mvel/mvel/issues/432 |
-| MVEL3 PR | https://github.com/mvel/mvel/pull/433 |
-| Blog entry | `blog/2026-05-20-tk02-432-mvel3-increment-writeback.md` |
-| Garden entry | `GE-20260520-ee66d2` (postfix write-back gotcha) |
+| Spec | `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md` |
+| Issue #52 | https://github.com/tkobayas/drlx-parser/issues/52 |
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Previous handover | `git show a455446:HANDOFF.md` |
+| Previous handover | `git show aa4c82b:HANDOFF.md` |
