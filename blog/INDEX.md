@@ -27,3 +27,4 @@
 | [2026-05-18-tk01-49-multiaccumulate-fold.md](2026-05-18-tk01-49-multiaccumulate-fold.md) | 2026-05-18 | #49 — folding to one MultiAccumulate (with a Pattern API surprise) |
 | [2026-05-19-tk01-50-inline-from-shorthand.md](2026-05-19-tk01-50-inline-from-shorthand.md) | 2026-05-19 | #50 — inline-from: the shorthand that was secretly boring |
 | [2026-05-20-tk01-51-acc-keyword-forms.md](2026-05-20-tk01-51-acc-keyword-forms.md) | 2026-05-20 | #51 — acc() keyword forms: spec to code in one session |
+| [2026-05-20-tk02-432-mvel3-increment-writeback.md](2026-05-20-tk02-432-mvel3-increment-writeback.md) | 2026-05-20 | #432 — fixing ++/-- in MVEL3's map evaluator |
