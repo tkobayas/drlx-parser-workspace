@@ -2,28 +2,32 @@
 
 ## Session goals (completed)
 
-**#52 spec written and architecture-reviewed.** Multi-pattern source via `and(...)` for all acc forms. Spec includes runtime plumbing gaps (tuple-aware extraction) identified during deep self-review.
+**#52 spec reviewed against Drools DRL runtime, corrected, and implementation plan written.** Critical fix: `handle.getObject()` returns `SubnetworkTuple` in multi-pattern context, not a domain fact. Plan has 11 tasks ready for execution.
 
 ## Current state
 
 - **Project repo** `main`, tip `fa203da`, clean. No code changes this session.
-- **Workspace** `main`, spec uncommitted.
+- **Workspace** `main`, spec updated + plan created (uncommitted).
 
 ## Immediate next action
 
-**Invoke `writing-plans` skill to create the implementation plan from `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md`.** The spec is approved and ready. Task #6 in the brainstorming checklist is pending.
+**Execute the implementation plan** `plans/2026-05-21-52-accumulate-multi-pattern-source-implementation.md` using `executing-plans` skill. Start with Task 1 (grammar change). The plan is self-contained with complete code for every step.
 
 ## Key decisions this session
 
-- **Approach A chosen:** widen IR `source` from `PatternIR` to `LhsItemIR` — no new types, reuses sealed hierarchy
-- **All acc forms** (2/3/4/5-param) get multi-pattern support, not just 2-param
-- **Three runtime gaps identified:** `DrlxLambdaAccumulator`, `DrlxValueExtractor`, and `DrlxCustomAccumulator` all assume single-source `handle.getObject()` — must use `innerDecls` + tuple for multi-pattern
+- **`requiredDeclarations` must be empty for multi-source** — Drools uses these for `LogicTransformer.replaceDeclarations()` and property-reactive masks; source declarations belong only in `innerDeclarationCache`
+- **`sourceScope` = innerScope minus outerScope** — MVEL3 compiler must see only source bindings, not outer scope
+- **`DrlxLambdaAccumulator.tryReverse()` unchanged** — built-in functions reverse by cached value, no tuple access needed
+- **`DrlxCustomAccumulator.tryReverse()` needs tuple extraction** — reverse block must re-extract all source facts from tuple via `innerDecls`
+- **Garden entry submitted** — `GE-20260521-1265db` documents the SubnetworkTuple gotcha
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Spec | `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md` |
+| Implementation plan | `plans/2026-05-21-52-accumulate-multi-pattern-source-implementation.md` |
+| Spec (updated) | `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md` |
 | Issue #52 | https://github.com/tkobayas/drlx-parser/issues/52 |
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Previous handover | `git show aa4c82b:HANDOFF.md` |
+| Garden entry | `~/.hortora/garden/jvm/GE-20260521-1265db.md` |
+| Previous handover | `git show 2c69355:HANDOFF.md` |

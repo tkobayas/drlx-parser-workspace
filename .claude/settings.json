@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(GE_ID=\"GE-$(date +%Y%m%d)-$(python3 -c \"import secrets; print(secrets.token_hex(3))\")\"; echo \"$GE_ID\")"
+    ]
+  }
+}

@@ -40,6 +40,17 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 - Workspace branches mirror project branches — switch both together
 - **Push workspace after handover** — once `HANDOFF.md` is committed at session end, push the workspace to `origin` if a remote exists and local is ahead. Fast-forward only; if behind or diverged, ask before acting. Project repo pushes remain explicit per request.
 
+## When creating a spec
+- Consider architectural point of view and maintainability, not just immediate implementation needs
+- Consider how the current drools codebase creates drools objects from DRL. It's better to follow the same pattern if possible.
+- Verify the current drools codebase if the spec expects the existing drools APIs. If better to avoid creating new APIs at drools side if possible, but if necessary, share the justification and let me decide.
+- Review with ultrathink
+
+## When creating a plan
+- Consider how the current drools codebase creates drools objects from DRL. It's better to follow the same pattern if possible.
+- Verify the current drools codebase if the spec expects the existing drools APIs. If better to avoid creating new APIs at drools side if possible, but if necessary, share the justification and let me decide.
+- Review with ultrathink
+
 ## Routing
 
 Per-artifact routing destinations (optional). If absent, all artifacts route to the project repo.
