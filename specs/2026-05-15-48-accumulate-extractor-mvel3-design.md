@@ -44,8 +44,9 @@ value is a deliberate future improvement and is out of scope here.
 **Out:** references to outer-scope bindings inside an extractor
 expression (e.g. `sum(p.age * q.factor)` where `q` was bound earlier
 in the rule). The `DrlxLambdaAccumulator.extractor` field stays
-`Function<Object, Object>` — single-fact input only. Outer-binding
-extractor refs are filed as a separate follow-up.
+`Function<Object, Object>` — single-fact input only. This was
+originally filed as #54 but later dropped — the use case is not in
+the DRLXXXX.md language spec.
 
 ## Architecture
 
@@ -124,8 +125,7 @@ Delete `buildSimpleExtractor`, `isIdentifier`, `findGetter` in full —
 the entire reflection path goes away.
 
 `DrlxLambdaAccumulator` is unchanged. The `Declaration[] required`
-plumbing for `SingleAccumulate` is unchanged (it stays in place for
-the future outer-binding-refs work).
+plumbing for `SingleAccumulate` is unchanged.
 
 ## Data flow
 
@@ -228,9 +228,9 @@ copy-and-adapt with `Boolean` swapped for `Object` in the output type.
 - #51 — `acc()` keyword forms
 - #52 — Multi-pattern source via `and(...)`
 - #53 — Custom user-imported accumulate functions
-- Outer-binding refs inside accumulate args (e.g. `sum(p.age * q.factor)`
-  where `q` is from outer scope) — not yet filed; will be added as a
-  follow-up after #48 lands.
+- ~~Outer-binding refs inside accumulate args (e.g. `sum(p.age * q.factor)`
+  where `q` is from outer scope) — was filed as #54, dropped because
+  the use case is not in the DRLXXXX.md language spec.~~
 - Reflection fast-path for trivial `binding.property` — defer until
   profiling justifies it.
 

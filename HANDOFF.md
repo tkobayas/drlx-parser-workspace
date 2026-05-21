@@ -2,29 +2,26 @@
 
 ## Session goals (completed)
 
-**#52 multi-pattern accumulate source — fully implemented.** 15 files modified, 9 new tests, all existing tests pass. Module installed. Changes are uncommitted in the project repo.
+**#54 explored, designed, then dropped.** Brainstormed outer-binding refs in accumulate extractors, validated approach against codebase, then discovered the feature isn't in DRLXXXX.md — it was only a follow-up from #48 spec. Closed #54, updated epic #26, updated #48 spec.
 
 ## Current state
 
-- **Project repo** `main`, tip `fa203da`, 15 files modified (uncommitted). All tests green.
-- **Workspace** `main`, blog entry + handover written.
+- **Project repo** `main`, tip `816ab89`, clean (no uncommitted changes).
+- **Workspace** `main`, #48 spec updated (uncommitted).
+- **GitHub** — #54 closed with rationale, #26 epic updated (#52 checked, #54 moved to "Dropped" section).
 
 ## Immediate next action
 
-**Commit the #52 implementation** in the project repo. The changes span grammar, IR model, protobuf, visitor, compiler, accumulators, runtime builder, and tests. Consider one squashed commit or a few logical commits (e.g. grammar+IR, runtime, tests). Then close issue #52.
+**Pick the next issue from #26.** Remaining candidates: #53 (custom accumulate functions), #40 (Group By), #41 (Queries), or any medium-priority item.
 
 ## Key decisions this session
 
-- **Single-child AND unwrapped at builder level** — Drools rete elides single-child AND groups (no subnetwork created), so our builder must detect this and use the single-source path to avoid NPE from empty `innerDecls`
-- **`sourceScope = innerScope - outerScope`** — MVEL3 compiler sees only source bindings; outer bindings excluded from the extraction map
-- **`sum()` returns `Double`** — test assertions use `300.0` not `300`
+- **#54 dropped** — outer-binding refs in accumulate extractors are not in DRLXXXX.md spec; the issue was only an implementation gap noted during #48 design, not a language-level requirement.
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Spec | `specs/2026-05-20-52-accumulate-multi-pattern-source-design.md` |
-| Plan | `plans/2026-05-21-52-accumulate-multi-pattern-source-implementation.md` |
-| Issue #52 | https://github.com/tkobayas/drlx-parser/issues/52 |
-| Blog entry | `blog/2026-05-21-tk01-52-multi-pattern-accumulate.md` |
-| Garden entry | `~/.hortora/garden/jvm/GE-20260521-1265db.md` |
+| Updated #48 spec | `specs/2026-05-15-48-accumulate-extractor-mvel3-design.md` |
+| Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
+| Closed #54 | https://github.com/tkobayas/drlx-parser/issues/54 |
