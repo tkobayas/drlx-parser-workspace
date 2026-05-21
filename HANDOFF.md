@@ -2,26 +2,28 @@
 
 ## Session goals (completed)
 
-**#54 explored, designed, then dropped.** Brainstormed outer-binding refs in accumulate extractors, validated approach against codebase, then discovered the feature isn't in DRLXXXX.md — it was only a follow-up from #48 spec. Closed #54, updated epic #26, updated #48 spec.
+**#53 implemented.** Designed, planned, and shipped custom user-imported accumulate functions. Container classes expose `AccumulateFunction` instances as `public static final` fields; rules reference them via qualified names (`Container.fieldName(expr)`). Six commits, 6 new tests, 43 total accumulate tests passing.
 
 ## Current state
 
-- **Project repo** `main`, tip `816ab89`, clean (no uncommitted changes).
-- **Workspace** `main`, #48 spec updated (uncommitted).
-- **GitHub** — #54 closed with rationale, #26 epic updated (#52 checked, #54 moved to "Dropped" section).
+- **Project repo** `main`, tip `d06fbc6`, clean, pushed to origin.
+- **Workspace** `main`, blog entry + spec + plan uncommitted.
+- **GitHub** — #53 closed, #26 epic updated (all accumulate issues complete).
 
 ## Immediate next action
 
-**Pick the next issue from #26.** Remaining candidates: #53 (custom accumulate functions), #40 (Group By), #41 (Queries), or any medium-priority item.
+**Pick the next issue from #26.** All accumulate sub-issues are done. Remaining candidates: #40 (Group By), #41 (Queries), or any medium-priority non-accumulate item (#30 Match, #32 Edge-triggered, #33 Setter desugaring, #38 Multiple do blocks, #42 Windows, #44 ExistenceDriven).
 
 ## Key decisions this session
 
-- **#54 dropped** — outer-binding refs in accumulate extractors are not in DRLXXXX.md spec; the issue was only an implementation gap noted during #48 design, not a language-level requirement.
+- **Container class model** — functions exposed as `public static final AccumulateFunction` fields (not methods, not single-class-is-function).
+- **Split resolution** — registry handles built-ins only; runtime builder resolves qualified names via `TypeResolver` + reflective field lookup.
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Updated #48 spec | `specs/2026-05-15-48-accumulate-extractor-mvel3-design.md` |
+| Spec | `specs/2026-05-21-53-custom-accumulate-functions-design.md` |
+| Plan | `plans/2026-05-21-53-custom-accumulate-functions-implementation.md` |
+| Blog | `blog/2026-05-21-tk02-53-custom-accumulate-functions.md` |
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Closed #54 | https://github.com/tkobayas/drlx-parser/issues/54 |
