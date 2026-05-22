@@ -30,3 +30,4 @@
 | [2026-05-20-tk02-432-mvel3-increment-writeback.md](2026-05-20-tk02-432-mvel3-increment-writeback.md) | 2026-05-20 | #432 — fixing ++/-- in MVEL3's map evaluator |
 | [2026-05-21-tk01-52-multi-pattern-accumulate.md](2026-05-21-tk01-52-multi-pattern-accumulate.md) | 2026-05-21 | #52 — multi-pattern accumulate: joined sources in acc() |
 | [2026-05-21-tk02-53-custom-accumulate-functions.md](2026-05-21-tk02-53-custom-accumulate-functions.md) | 2026-05-21 | #53 — custom accumulate functions: container classes and qualified names |
+| [2026-05-22-tk01-41-queries-v1.md](2026-05-22-tk01-41-queries-v1.md) | 2026-05-22 | #41 — queries v1: parameterized rules and in-rule invocation |
