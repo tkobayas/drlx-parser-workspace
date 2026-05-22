@@ -6,13 +6,13 @@
 
 ## Current state
 
-- **Project repo** `main`, tip `3e7ffc8`, clean, pushed status unknown.
-- **Workspace** `main`, blog entry + spec + plan uncommitted.
-- **GitHub** — #41 open (close after push), #26 epic not yet updated.
+- **Project repo** `main`, tip `3e7ffc8`, clean, not yet pushed.
+- **Workspace** `main`, pushed to origin.
+- **GitHub** — #41 updated (v1 scope), #26 epic updated. 6 follow-up query issues created (#56–#61). #56, #57, #59, #60, #61 moved to epic #55 (deferred). #58 (recursive queries) stays in #26.
 
 ## Immediate next action
 
-**Push project repo, close #41, update #26 epic.** Then pick the next issue from #26. Remaining candidates: #30 (Match), #32 (Edge-triggered), #33 (Setter desugaring), #38 (Multiple do blocks), #42 (Windows), #44 (ExistenceDriven). #40 (Group By) moved to epic #55. #41 (Queries) done.
+**Push project repo, close #41.** Then pick the next issue from #26. Remaining candidates: #58 (Recursive queries), #30 (Match), #32 (Edge-triggered), #33 (Setter desugaring), #38 (Multiple do blocks), #42 (Windows), #44 (ExistenceDriven). #40 (Group By) and most query extensions in epic #55.
 
 ## Key decisions this session
 
