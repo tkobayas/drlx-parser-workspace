@@ -2,32 +2,35 @@
 
 ## Session goals (completed)
 
-**#58 recursive queries implemented.** Query self-reference with transitive closure support using the DRLXXXX spec's exact syntax. Key addition: disambiguation heuristic that classifies self-referencing `/trusts(args)` as Pattern (base case) or QueryElement (recursive call) based on whether input args are query parameters or locally-bound variables. 1 commit, 1 new test, 279 total tests passing.
+**#63 MVEL3 == transpilation fixed.** Added `rewriteReferenceEquality()` fallback in `MVELToJavaRewriter` that generates `java.util.Objects.equals()` for `==`/`!=` on non-primitive, non-enum reference types. PR opened upstream: [mvel/mvel#434](https://github.com/mvel/mvel/pull/434). 8 new tests, 754 MVEL3 tests pass, 279 drlx-parser tests pass.
 
 ## Current state
 
-- **Project repo** `main`, tip `46e2a21`, clean, pushed.
-- **Workspace** `main`, needs push after this commit.
-- **GitHub** — #58 closed. Epic #26 updated.
+- **MVEL3 repo** `equals-transpile` branch, tip `c50b8db0`, clean, pushed to `origin`.
+- **drlx-parser project repo** `main`, clean, unchanged this session.
+- **Workspace** `main`, needs commit + push after this handover.
+- **GitHub** — mvel/mvel#434 open. drlx-parser#63 still open (close after PR merges). drlx-parser#64 open (follow-up cleanup, blocked by #434).
 
 ## Immediate next action
 
-Pick the next issue from #26. Remaining candidates: #30 (Match), #32 (Edge-triggered), #33 (Setter desugaring), #38 (Multiple do blocks), #42 (Windows), #44 (ExistenceDriven).
+Wait for mvel/mvel#434 to be merged. Then:
+1. Close drlx-parser#63
+2. Implement drlx-parser#64 (remove `.intern()` and `.equals()` workarounds)
+3. Pick the next issue from epic #26.
 
 ## Key decisions this session
 
-- **Self-reference disambiguation heuristic** — inside a query body, `/trusts(args)` where `trusts` is the current query: if all input variable args are query params → Pattern (base case); any locally-bound input → QueryElement (recursive call). Documented in spec and code comment. May be revisited for more complex recursive patterns.
-- **New classes for unification** — `DrlxBeanFieldReader` (ReadAccessor for bean property extraction in output bindings) and `DrlxUnificationConstraint` (skips constraint evaluation when query param is unbound). These mirror old DRL's unification semantics.
-- **`.intern()` in parseLiteral** — kept defensively but not verified as necessary. The `buildSelfReferencePattern` uses `.equals()` for synthesized constraints. The interaction between MVEL3 transpilation and reference equality needs investigation if issues arise.
-
-## Open questions
-
-- **MVEL3 `==` semantics** — subagent claimed MVEL3 transpiles `==` to Java `==` (reference equality). Not verified. Existing positional tests work without `.intern()`. May be a non-issue or may only affect non-interned strings.
+- **Fix in MVEL3, not drlx-parser** — the transpiler should honour MVEL's `==` = value equality contract. drlx-parser workarounds were band-aids.
+- **`java.util.Objects.equals()` over ternary null check** — concise, null-safe, no conditional logic.
+- **Enums excluded** — Java singleton guarantee makes `==` correct and idiomatic for enums.
 
 ## References
 
 | Topic | Path |
 |---|---|
-| Spec | `specs/2026-05-25-58-recursive-queries-design.md` |
-| Plan | `plans/2026-05-25-58-recursive-queries-implementation.md` |
+| Spec | `specs/2026-05-25-63-mvel3-equals-transpilation-design.md` |
+| Plan | `plans/2026-05-25-63-mvel3-equals-transpilation-implementation.md` |
+| Blog | `blog/2026-05-25-tk01-63-mvel3-equals-transpilation.md` |
+| PR | https://github.com/mvel/mvel/pull/434 |
+| Follow-up #64 | https://github.com/tkobayas/drlx-parser/issues/64 |
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |

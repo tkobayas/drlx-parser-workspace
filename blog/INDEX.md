@@ -31,3 +31,4 @@
 | [2026-05-21-tk01-52-multi-pattern-accumulate.md](2026-05-21-tk01-52-multi-pattern-accumulate.md) | 2026-05-21 | #52 — multi-pattern accumulate: joined sources in acc() |
 | [2026-05-21-tk02-53-custom-accumulate-functions.md](2026-05-21-tk02-53-custom-accumulate-functions.md) | 2026-05-21 | #53 — custom accumulate functions: container classes and qualified names |
 | [2026-05-22-tk01-41-queries-v1.md](2026-05-22-tk01-41-queries-v1.md) | 2026-05-22 | #41 — queries v1: parameterized rules and in-rule invocation |
+| [2026-05-25-tk01-63-mvel3-equals-transpilation.md](2026-05-25-tk01-63-mvel3-equals-transpilation.md) | 2026-05-25 | #63 — fixing MVEL3's == for reference types |
