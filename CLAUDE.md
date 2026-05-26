@@ -40,16 +40,27 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 - Workspace branches mirror project branches — switch both together
 - **Push workspace after handover** — once `HANDOFF.md` is committed at session end, push the workspace to `origin` if a remote exists and local is ahead. Fast-forward only; if behind or diverged, ask before acting. Project repo pushes remain explicit per request.
 
+## When brainstorming a spec
+- Consider architectural point of view and maintainability, not just immediate implementation needs
+- Consider how the current drools codebase creates drools objects from DRL. It's better to follow the same pattern if possible.
+- Verify the current drools codebase if the spec expects the existing drools APIs. If better to avoid creating new APIs at drools side if possible, but if necessary, share the justification and let me decide.
+- Verify the current mvel3 codebase if the spec expects the existing mvel3 APIs. It's worth considering if we should enhance mvel3 APIs to better support DRLX implementation, but if necessary, share the justification and let me decide.
+- Consider the risk of how the code would be complicated. Share the information with me and let me decide if the risk is acceptable or not.
+
 ## When creating a spec
 - Consider architectural point of view and maintainability, not just immediate implementation needs
 - Consider how the current drools codebase creates drools objects from DRL. It's better to follow the same pattern if possible.
 - Verify the current drools codebase if the spec expects the existing drools APIs. If better to avoid creating new APIs at drools side if possible, but if necessary, share the justification and let me decide.
+- Respect the syntax in DRLXXXX.md document. If you think the syntax is a mistake, share the information with me and let me decide if I should fix it or not.
 - Review with ultrathink
 
 ## When creating a plan
 - Consider how the current drools codebase creates drools objects from DRL. It's better to follow the same pattern if possible.
 - Verify the current drools codebase if the spec expects the existing drools APIs. If better to avoid creating new APIs at drools side if possible, but if necessary, share the justification and let me decide.
 - Review with ultrathink
+
+## When implementing a plan
+- **Do not change the user facing design (including DRLX syntax) because of the implementation obstacles. If you face such a situation, share the information with me and let me decide if the change is acceptable or not.**
 
 ## Routing
 
