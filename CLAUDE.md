@@ -35,6 +35,7 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 
 ## Rules
 
+- **Git path convention:** use `git -C <path> <command>` rather than `cd <path> && git <command>`. Similarly, use `mvn -f <pom>` rather than `cd <path> && mvn`. Never use `cd` to change directories before running tools.
 - All methodology artifacts go here, not in the project repo
 - Promotion to project repo is always explicit — never automatic
 - Workspace branches mirror project branches — switch both together
