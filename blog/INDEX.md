@@ -34,3 +34,4 @@
 | [2026-05-25-tk01-63-mvel3-equals-transpilation.md](2026-05-25-tk01-63-mvel3-equals-transpilation.md) | 2026-05-25 | #63 — fixing MVEL3's == for reference types |
 | [2026-05-26-tk01-64-62-cleanup-positional-outbind.md](2026-05-26-tk01-64-62-cleanup-positional-outbind.md) | 2026-05-26 | #64 + #62 — cleanup and positional out-binding |
 | [2026-05-26-tk02-73-runtime-cep-stream-pseudo.md](2026-05-26-tk02-73-runtime-cep-stream-pseudo.md) | 2026-05-26 | #73 — runtime CEP: STREAM mode and pseudo clock |
+| [2026-05-27-tk01-34-compact-setter-blocks.md](2026-05-27-tk01-34-compact-setter-blocks.md) | 2026-05-27 | #34 — compact setter blocks land in MVEL3 |
