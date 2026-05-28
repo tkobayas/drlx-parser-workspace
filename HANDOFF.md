@@ -2,11 +2,11 @@
 
 ## Session goals (completed)
 
-**#74 Window test flakiness — root-caused and fixed.** `ListDataStore` uses `IdentityHashMap` which doesn't preserve insertion order. When events were added before `subscribe()`, the `length[3]` window replay was non-deterministic — producing 1, 2, or 3 instead of consistent 2. Fix: moved all event insertions in `WindowTest` to after instance creation. Also closed #34.
+**#75 DataStoreUpdateRewriter compact-with fix — done.** Switched `DataStoreUpdateRewriter` from `JavaParser` to MVEL3's `MvelParser` (`Antlr4MvelParser`) so it can parse compact-with syntax (`p{age = 0}`) in consequence bodies. Added unit tests and integration test for `do { p{age = 0}; persons.update(p); }`. Created #76 for the next step: compact-with *as argument* to `update()` (e.g. `alerts.update(t{status = RECEIVED})`).
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `ec444bd`, clean, pushed.
+- **drlx-parser project repo** `main` at `c30dacf`, clean, pushed.
 - **javaparser-mvel** `compact-with` merged (per user).
 - **MVEL3** `compact-with` merged (per user).
 - **Workspace** `main`, clean.
@@ -18,15 +18,16 @@
 ## Open issues
 
 - **ListDataStore ordering** — `IdentityHashMap` in drools `ListDataStore.subscribe()` replays events in arbitrary order. User will file upstream drools issue. Workaround: always insert events after instance creation.
-- `DataStoreUpdateRewriter` uses plain `JavaParser.parseBlock()` which can't parse `p{...}` syntax. Compact-with + `DataStore.update()` in the same consequence block needs either the rewriter to use MVEL3 parser, or statement reordering at DRLX level.
+- **#76** — `DataStoreUpdateRewriter` skips `CompactWithExpression` arguments; `alerts.update(t{status = RECEIVED})` still fails. Tracked in epic #26 (Low Priority).
 
 ## Immediate next action
 
-Pick next from epic #26: **#43** (pluggable operators) or another open issue.
+Pick next from epic #26: **#43** (pluggable operators) or **#76** (compact-with as update argument).
 
 ## References
 
 | Topic | Path |
 |---|---|
 | Epic #26 | https://github.com/tkobayas/drlx-parser/issues/26 |
-| Bug #74 | https://github.com/tkobayas/drlx-parser/issues/74 |
+| Bug #75 (closed) | https://github.com/tkobayas/drlx-parser/issues/75 |
+| Enhancement #76 | https://github.com/tkobayas/drlx-parser/issues/76 |
