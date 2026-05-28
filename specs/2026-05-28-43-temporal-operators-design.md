@@ -184,16 +184,26 @@ For temporal operators specifically (the only custom operators supported in v1):
 
 ## Runtime Constraint — DrlxTemporalConstraint
 
-New class, structurally similar to `DrlxLambdaBetaConstraint`:
+New class, extends `MutableTypeConstraint` and **implements
+`IntervalProviderConstraint`** (from `drools-base`):
 
 ```java
 public class DrlxTemporalConstraint
-        extends MutableTypeConstraint<ContextEntry> {
+        extends MutableTypeConstraint<ContextEntry>
+        implements IntervalProviderConstraint {
 
     private final TemporalPredicate temporalPredicate;
     private final Declaration[] requiredDeclarations;
+    private final Interval interval;  // org.drools.base.time.Interval
 
-    // Constructor, getters ...
+    public DrlxTemporalConstraint(TemporalPredicate predicate, Declaration[] decls) {
+        this.temporalPredicate = predicate;
+        this.requiredDeclarations = decls;
+        // Convert from model Interval to base Interval
+        var modelInterval = predicate.getInterval();
+        this.interval = new Interval(
+            modelInterval.getLowerBound(), modelInterval.getUpperBound());
+    }
 
     @Override
     public boolean isTemporal() { return true; }
@@ -202,19 +212,14 @@ public class DrlxTemporalConstraint
     public ConstraintType getType() { return ConstraintType.BETA; }
 
     @Override
+    public Interval getInterval() { return interval; }
+
+    @Override
     public boolean isAllowedCachedLeft(ContextEntry context, FactHandle handle) {
         DrlxBetaContextEntry ctx = (DrlxBetaContextEntry) context;
         EventHandle thisEvent = (EventHandle) handle;
         EventHandle otherEvent = (EventHandle) ctx.tuple.get(requiredDeclarations[0]);
-
-        return temporalPredicate.evaluate(
-            thisEvent.getStartTimestamp(),
-            thisEvent.getDuration(),
-            thisEvent.getEndTimestamp(),
-            otherEvent.getStartTimestamp(),
-            otherEvent.getDuration(),
-            otherEvent.getEndTimestamp()
-        );
+        return evaluateTemporal(thisEvent, otherEvent);
     }
 
     @Override
@@ -222,15 +227,21 @@ public class DrlxTemporalConstraint
         DrlxBetaContextEntry ctx = (DrlxBetaContextEntry) context;
         EventHandle thisEvent = (EventHandle) ctx.handle;
         EventHandle otherEvent = (EventHandle) tuple.get(requiredDeclarations[0]);
+        return evaluateTemporal(thisEvent, otherEvent);
+    }
 
-        return temporalPredicate.evaluate(
-            thisEvent.getStartTimestamp(),
-            thisEvent.getDuration(),
-            thisEvent.getEndTimestamp(),
-            otherEvent.getStartTimestamp(),
-            otherEvent.getDuration(),
-            otherEvent.getEndTimestamp()
-        );
+    private boolean evaluateTemporal(EventHandle thisEvent, EventHandle otherEvent) {
+        long start1 = thisEvent.getStartTimestamp();
+        long dur1   = thisEvent.getDuration();
+        long end1   = thisEvent.getEndTimestamp();
+        long start2 = otherEvent.getStartTimestamp();
+        long dur2   = otherEvent.getDuration();
+        long end2   = otherEvent.getEndTimestamp();
+        // Respect thisOnRight flag (swaps position 1 and 2)
+        if (temporalPredicate.isThisOnRight()) {
+            return temporalPredicate.evaluate(start2, dur2, end2, start1, dur1, end1);
+        }
+        return temporalPredicate.evaluate(start1, dur1, end1, start2, dur2, end2);
     }
 
     @Override
@@ -243,45 +254,71 @@ public class DrlxTemporalConstraint
 ```
 
 **Key design points:**
-- Returns `true` from `isTemporal()` — this is critical for the RETE network
-  to handle temporal windows, event expiration, and negative CE delay correctly
+
+- **Implements `IntervalProviderConstraint`** — this is critical. Without it,
+  the RETE builder (`BuildUtils.gatherTemporalRelationships()`) cannot extract
+  the temporal interval, and event expiration and negative-pattern delay timers
+  would not work. The `getInterval()` method returns a `org.drools.base.time.Interval`
+  converted from the `TemporalPredicate`'s model-layer interval.
+- **Returns `true` from `isTemporal()`** — required for RETE network to handle
+  temporal windows, event expiration, and negative CE delay correctly.
+- **Respects `thisOnRight` flag** — `TemporalPredicate` implementations may have
+  `isThisOnRight() == true` (though directly-constructed predicates default to
+  `false`). The evaluation swaps position 1 and 2 when set, following the same
+  pattern as drools' `TemporalConstraintEvaluator` (line 58-62).
+- **Two `Interval` types** — `TemporalPredicate.getInterval()` returns
+  `org.drools.model.functions.temporal.Interval` (model layer) which must be
+  converted to `org.drools.base.time.Interval` (base layer) for
+  `IntervalProviderConstraint`. Same fields (lowerBound/upperBound), just
+  different packages.
 - Reuses `DrlxBetaContextEntry` (no new context entry needed)
 - Casts `FactHandle` to `EventHandle` (kie-api interface) for timestamp access
-- Position 1 in `evaluate()` = `this` (current pattern), position 2 = other
-  binding
 
 ## Temporal Predicate Factory
 
 Static factory that maps operator name + parameters to the correct drools
-`TemporalPredicate` implementation:
+`TemporalPredicate` implementation.
+
+### Constructor Compatibility Matrix
+
+Not all predicates accept the same number of parameters:
+
+| Params | Supported operators |
+|--------|-------------------|
+| 0 | all except `coincides` (no no-arg constructor; use `(0, MILLISECONDS)` as default) |
+| 1 | all 13 — `(long, TimeUnit)` constructor |
+| 2 | `after`, `before`, `coincides`, `during`, `includes`, `overlaps`, `overlappedby` — `(long, TU, long, TU)` |
+| 2 rejected | `finishes`, `finishedby`, `meets`, `metby`, `starts`, `startedby` — only 0 or 1 param |
+
+The factory validates parameter count per operator and throws a clear error
+for unsupported counts.
+
+### Factory Implementation
 
 ```java
 static TemporalPredicate create(String operator, boolean negated,
                                  List<String> params) {
-    long min = 1, max = Long.MAX_VALUE;
-    if (params.size() == 1) {
-        min = TimeUtils.parseTimeString(params.get(0));
-    } else if (params.size() >= 2) {
-        min = TimeUtils.parseTimeString(params.get(0));
-        max = TimeUtils.parseTimeString(params.get(1));
-    }
-
     TemporalPredicate pred = switch (operator) {
-        case "after"        -> createAfterOrBefore(AfterPredicate.class, min, max, params);
-        case "before"       -> createAfterOrBefore(BeforePredicate.class, min, max, params);
-        // ... all 13 operators mapped to their predicate classes
-        default -> throw new IllegalArgumentException("Unknown temporal operator: " + operator);
+        case "after"        -> createRangePredicate(params, AfterPredicate::new,
+                                   AfterPredicate::new, AfterPredicate::new);
+        case "before"       -> createRangePredicate(params, BeforePredicate::new,
+                                   BeforePredicate::new, BeforePredicate::new);
+        case "coincides"    -> createRangePredicate(params,
+                                   () -> new CoincidesPredicate(0, MILLISECONDS),
+                                   CoincidesPredicate::new, CoincidesPredicate::new);
+        // ... remaining 10 operators
+        // For threshold-only operators (meets, metby, finishes, etc.):
+        //   reject 2-param form, use threshold constructor for 1-param
+        default -> throw new IllegalArgumentException(
+                       "Unknown temporal operator: " + operator);
     };
-
     return negated ? pred.negate() : pred;
 }
 ```
 
-Each predicate class has public constructors for 0, 1, and 2 duration
-parameters using `TimeUnit.MILLISECONDS`. The exact constructor signatures
-vary slightly between predicate types (e.g., `MeetsPredicate` only accepts a
-single threshold). The factory validates parameter count per operator and
-throws a clear error for unsupported parameter counts.
+Duration strings are parsed via `TimeUtils.parseTimeString()` (already used
+for window durations). All durations converted to milliseconds, passed with
+`TimeUnit.MILLISECONDS`.
 
 ## Runtime Builder Integration
 
@@ -318,6 +355,7 @@ returns `true`. This catches misuse at build time with a clear error:
 | Non-event pattern type | Runtime builder | "Temporal operator 'after' requires event types (@Role(Type.EVENT)) but 'Person' is not an event" |
 | Unknown right-hand binding | Runtime builder | "Temporal constraint references unknown binding 'a'" |
 | Right-hand binding not an event | Runtime builder | Same event-type error |
+| Invalid parameter count | Runtime builder (factory) | "Operator 'meets' accepts 0 or 1 parameters, but 2 were given" |
 
 ## Testing Strategy
 
@@ -356,6 +394,8 @@ All required classes are already in the classpath (transitive via
 - `org.kie.api.runtime.rule.EventHandle` — kie-api
 - `org.drools.core.common.DefaultEventHandle` — drools-core
 - `org.drools.model.functions.temporal.*Predicate` — drools-canonical-model
+- `org.drools.base.time.Interval` — drools-base (for `IntervalProviderConstraint`)
+- `org.drools.base.rule.IntervalProviderConstraint` — drools-base
 - `org.drools.base.time.TimeUtils` — drools-base
 
 No new Maven dependencies needed.
@@ -373,5 +413,5 @@ No new Maven dependencies needed.
 
 | File | Purpose |
 |------|---------|
-| `DrlxTemporalConstraint.java` | Runtime temporal constraint (extends `MutableTypeConstraint`) |
+| `DrlxTemporalConstraint.java` | Runtime temporal constraint (extends `MutableTypeConstraint`, implements `IntervalProviderConstraint`) |
 | `TemporalPredicateFactory.java` | Maps operator name + params → drools `TemporalPredicate` |
