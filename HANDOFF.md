@@ -2,20 +2,22 @@
 
 ## Session goals (completed)
 
-**#76 compact-with as update argument — done.** Added `CompactWithExpression` handling in `DataStoreUpdateRewriter.rewriteCallIfMatch()`: extracts the compact-with to a preceding statement, replaces the arg with the target `NameExpr`, then applies the standard two-arg rewrite. Unit tests + integration test pass. Committed, pushed, #76 closed.
+**#43 Temporal operators (CEP) — done.** Added all 13 Allen interval operators (`after`, `before`, `coincides`, etc.) to DRLX pattern constraints. Generic `customConstraint` grammar rule, `TemporalPredicateFactory`, `DrlxTemporalConstraint` (implements `IntervalProviderConstraint`). 8 commits, 17 new tests, pushed, #43 closed. Epic #26 fully complete.
 
-**Moved #22 to epic #55.** Removed from epic #26 "Related" section, added to #55 sub-issues list.
+**WithdrawalUnit fix.** Changed from `DataStore` to `DataStream` (events should use append-only streams).
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `ca4153f`, clean, pushed.
+- **drlx-parser project repo** `main` at `297d04d`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, clean.
 
 ## Key decisions
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+- Grammar uses generic `customConstraint` rule (not temporal-specific) — extensible for fuzzy operators (#66).
+- Reuses drools `TemporalPredicate` implementations rather than reimplementing Allen interval logic.
+- `DrlxTemporalConstraint` implements `IntervalProviderConstraint` for correct RETE event expiration.
 
 ## Open issues
 
@@ -23,4 +25,4 @@
 
 ## Immediate next action
 
-Pick next from epic #26 (**#43** pluggable operators is the only remaining open item) or epic #55.
+Epic #26 is complete. Pick next from epic #55 (round 3 features — #22 form-B if/else, #30 match/switch, #32 edge-triggered, #65 test block, etc.).
