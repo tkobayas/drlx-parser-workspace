@@ -35,3 +35,4 @@
 | [2026-05-26-tk01-64-62-cleanup-positional-outbind.md](2026-05-26-tk01-64-62-cleanup-positional-outbind.md) | 2026-05-26 | #64 + #62 — cleanup and positional out-binding |
 | [2026-05-26-tk02-73-runtime-cep-stream-pseudo.md](2026-05-26-tk02-73-runtime-cep-stream-pseudo.md) | 2026-05-26 | #73 — runtime CEP: STREAM mode and pseudo clock |
 | [2026-05-27-tk01-34-compact-setter-blocks.md](2026-05-27-tk01-34-compact-setter-blocks.md) | 2026-05-27 | #34 — compact setter blocks land in MVEL3 |
+| [2026-05-28-tk01-43-temporal-operators.md](2026-05-28-tk01-43-temporal-operators.md) | 2026-05-28 | #43 — temporal operators close out epic #26 |
