@@ -10,6 +10,8 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 
 **If MVEL3 changes are needed:** also `add-dir /home/tkobayas/usr/work/mvel3-development/mvel`. DRLX consumes MVEL3 via `3.0.0-SNAPSHOT`, so any MVEL3 modification must be `mvn install`-ed locally before DRLX picks it up.
 
+**If MVEL3 require changes in JavaParser AST nodes:** also `add-dir /home/tkobayas/usr/work/mvel3-development/javaparser-mvel`. It will need some coordination about dependency versions, so discuss with me before proceeding.
+
 ## Artifact Locations
 
 | Skill | Writes to |
@@ -62,6 +64,7 @@ Run `add-dir /home/tkobayas/usr/work/mvel3-development/drools` next.
 
 ## When implementing a plan
 - **Do not change the user facing design (including DRLX syntax) because of the implementation obstacles. If you face such a situation, share the information with me and let me decide if the change is acceptable or not.**
+- When implementation is done, run the whole drlx-parser test suite to verify that everything is working as expected. If there are any test failures, investigate and fix them before considering the implementation complete.
 
 ## Routing
 
