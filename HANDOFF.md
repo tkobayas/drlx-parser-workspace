@@ -2,9 +2,7 @@
 
 ## Session goals (completed)
 
-**#43 Temporal operators (CEP) — done.** Added all 13 Allen interval operators (`after`, `before`, `coincides`, etc.) to DRLX pattern constraints. Generic `customConstraint` grammar rule, `TemporalPredicateFactory`, `DrlxTemporalConstraint` (implements `IntervalProviderConstraint`). 8 commits, 17 new tests, pushed, #43 closed. Epic #26 fully complete.
-
-**WithdrawalUnit fix.** Changed from `DataStore` to `DataStream` (events should use append-only streams).
+**Epic #55 split into five focused epics.** Categorised 20 issues by drools API dependency and edge-case-ness, created five new epics (#77–#81), commented on all sub-issues, closed #55.
 
 ## Current state
 
@@ -15,9 +13,10 @@
 
 ## Key decisions
 
-- Grammar uses generic `customConstraint` rule (not temporal-specific) — extensible for fuzzy operators (#66).
-- Reuses drools `TemporalPredicate` implementations rather than reimplementing Allen interval logic.
-- `DrlxTemporalConstraint` implements `IntervalProviderConstraint` for correct RETE event expiration.
+- **Priority axis:** issues requiring drools API changes or too-edge-case are de-prioritised.
+- **Epic #77** (queries) and **#78** (rule metadata & syntax sugar) are highest priority — pure parser/compiler, no drools API changes.
+- **Epic #79** (conditionals & named windows) is medium — complex compiler work but maps to existing drools concepts.
+- **Epics #80, #81** are parked — require drools runtime changes or new frameworks.
 
 ## Open issues
 
@@ -25,4 +24,4 @@
 
 ## Immediate next action
 
-Epic #26 is complete. Pick next from epic #55 (round 3 features — #22 form-B if/else, #30 match/switch, #32 edge-triggered, #65 test block, etc.).
+Pick a feature from epic #77 or #78 to implement next.
