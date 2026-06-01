@@ -2,26 +2,27 @@
 
 ## Session goals (completed)
 
-**Implemented #57 — query result binding (`var t : /queryName(...)`).** `QueryResultRow` extends `AbstractMap<String, Object>` so MVEL3's native Map-property rewriter handles `t.a` → `t.get("a")` and `t[0]` → `t.get(0)` without MVEL3 changes. 3 new files, 12 lines added to `DrlxRuleAstRuntimeBuilder`, 5 E2E tests + 6 unit tests. Filed #82 (handle access deferred) and #83 (DrlxEvalExpression ReadAccessor bypass bug).
+**Designed #82 — query result handle access (`t.handles()[0]`, `t.handles().a`).** Approach C chosen: lazy FactHandle resolution via `ReteEvaluator` entry point search. Zero Drools changes. Spec and implementation plan written, not yet implemented.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `f0d7894`, clean, not yet pushed.
+- **drlx-parser project repo** `main` at `f0d7894`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, uncommitted (blog, specs, plans for #56 and #57).
+- **Workspace** `main`, uncommitted (spec + plan for #82).
 
 ## Key decisions
 
 - **Priority axis:** *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **AbstractMap over bytecode generation:** `QueryResultRow` extends `AbstractMap<String, Object>` to leverage MVEL3's `maybeRewriteToGetter()` (line 1475 of `MVELToJavaRewriter.java`). No MVEL3 changes, no bytecode generation needed.
-- **Handles deferred:** `t.handles[0]` requires tuple access that `ReadAccessor` doesn't provide. Filed as #82.
+- **Lazy handle resolution (Approach C):** `QueryResultRow` receives `ValueResolver`, casts to `ReteEvaluator`, calls `getFactHandle(Object)` via entry point iteration. Avoids Drools-side changes.
+- **Method call syntax only:** `t.handles()[0]` not `t.handles[0]`. MVEL3's `rewriteArrayAccessExpr` can't resolve `[0]` on `Map.get()` return type (`Object`). Method call path resolves the return type correctly.
+- **Entry point search:** `getFactHandle(Object)` only searches the default entry point. Workaround: iterate all entry points. Comment notes future improvement opportunity.
 
 ## Open issues
 
 - **ListDataStore ordering** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **#83 DrlxEvalExpression bypasses ReadAccessor** — `evaluate()` uses `fh.getObject()` instead of `decl.getValue(null, fh.getObject())`. Breaks `test` expressions referencing query result bindings or output variables.
+- **#83 DrlxEvalExpression bypasses ReadAccessor** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 
 ## Immediate next action
 
-Push drlx-parser `main`, then pick another feature from epic #77 or #78. Remaining in #77: #60 (named access), #61 (annotations), #82 (handles), #83 (eval ReadAccessor fix).
+Implement #82 using plan at `plans/2026-06-01-82-query-handle-access.md` (8 tasks). Then pick next from epic #77: #60, #61, #83.
