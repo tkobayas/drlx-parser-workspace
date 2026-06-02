@@ -39,3 +39,4 @@
 | [2026-05-29-tk01-56-passive-query-invocation.md](2026-05-29-tk01-56-passive-query-invocation.md) | 2026-05-29 | #56 — passive query invocation: one boolean and a test that proved nothing |
 | [2026-05-29-tk02-57-query-result-binding.md](2026-05-29-tk02-57-query-result-binding.md) | 2026-05-29 | #57 — query result binding: the Map trick that saved a code generator |
 | [2026-06-02-tk01-82-handle-access.md](2026-06-02-tk01-82-handle-access.md) | 2026-06-02 | #82 — handle access and the null that came from three layers down |
+| [2026-06-02-tk02-60-named-query-access.md](2026-06-02-tk02-60-named-query-access.md) | 2026-06-02 | #60 — designing named query access |
