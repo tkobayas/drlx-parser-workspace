@@ -2,24 +2,29 @@
 
 ## Session goals (completed)
 
-**Implemented #60 — query named access.** Grammar (`VAR varBind=identifier ':' varParam=identifier` in `drlxExpression`), visitor update for labeled accessors, compiler (`buildNamedQueryArgs` + detection in `buildLhsPatterns`), 9 tests (4 happy-path + 5 error cases). All tests green, module installed.
+**Implemented #61 — @DataSource annotation.** New `DataSource.java` annotation, `DATASOURCE` IR kind + proto, visitor resolution/validation, runtime builder entry point override with dual-registration for self-reference resolution. 8 tests. All green, module installed, pushed.
+
+**Closed epic #77** (Query enhancements) — all 6 sub-issues complete.
+
+**Created #84** — `@Rule` annotation on Unit DataSource fields, split from #61, placed in epic #80 (de-prioritized, requires drools-side changes).
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `12510b5`, clean, not pushed.
+- **drlx-parser project repo** `main` at `d7569af`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, uncommitted (this handover + blog + plan).
+- **Workspace** `main`, uncommitted (this handover + blog).
 
 ## Key decisions
 
+- **`@DataSource` queries only** — annotation rejected on non-query rules with a clear error.
+- **Dual-registration in queryRegistry** — query registered under both override name and default lowercased name. The default name is needed for self-reference resolution in the query body (`buildSelfReferencePattern` path).
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
 
-- **#60 still open** — implementation is done but the issue hasn't been closed yet. Close it after pushing.
 - **ListDataStore ordering** — *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Immediate next action
 
-Push `drlx-parser` project repo, close #60. Then pick the next issue — #61 (`@Rule`/`@DataSource` annotations) is the last in epic #77, or move to a different epic.
+Pick the next epic to work on. Candidates: #78 (Rule metadata & syntax sugar), #79 (Conditional branching & named windows). #80 and #81 are de-prioritized.
