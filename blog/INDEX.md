@@ -42,3 +42,4 @@
 | [2026-06-02-tk02-60-named-query-access.md](2026-06-02-tk02-60-named-query-access.md) | 2026-06-02 | #60 — designing named query access |
 | [2026-06-05-tk01-60-named-access-shipped.md](2026-06-05-tk01-60-named-access-shipped.md) | 2026-06-05 | #60 — named query access shipped |
 | [2026-06-05-tk02-61-datasource-annotation.md](2026-06-05-tk02-61-datasource-annotation.md) | 2026-06-05 | #61 — @DataSource annotation and the end of epic #77 |
+| [2026-06-09-tk01-6-seven-annotations-three-surprises.md](2026-06-09-tk01-6-seven-annotations-three-surprises.md) | 2026-06-09 | #6 — seven annotations, three runtime surprises |

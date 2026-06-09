@@ -2,29 +2,31 @@
 
 ## Session goals (completed)
 
-**Implemented #61 — @DataSource annotation.** New `DataSource.java` annotation, `DATASOURCE` IR kind + proto, visitor resolution/validation, runtime builder entry point override with dual-registration for self-reference resolution. 8 tests. All green, module installed, pushed.
+**Implemented #6 — 7 rule-level annotations.** `@NoLoop`, `@LockOnActive`, `@AutoFocus`, `@Disabled`, `@AgendaGroup`, `@ActivationGroup`, `@RuleFlowGroup`. ArgShape-based resolver refactor, proto enum, runtime application. 10 commits, 22 tests pass, 6 `@Disabled` (runtime bugs).
 
-**Closed epic #77** (Query enhancements) — all 6 sub-issues complete.
-
-**Created #84** — `@Rule` annotation on Unit DataSource fields, split from #61, placed in epic #80 (de-prioritized, requires drools-side changes).
+**Created 5 issues:** #85 (`@Duration`/`@Timer`), #86 (`@DateEffective`/`@DateExpires`) — deferred from #6. #87 (NoLoop not enforced), #88 (AgendaGroup not enforced), #89 (RuleFlowGroup not enforced) — runtime bugs discovered by DrlxRuleUnitInstance tests.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `d7569af`, clean, pushed.
+- **drlx-parser project repo** `main` at `9b2deef`, clean, not pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, uncommitted (this handover + blog).
 
 ## Key decisions
 
-- **`@DataSource` queries only** — annotation rejected on non-query rules with a clear error.
-- **Dual-registration in queryRegistry** — query registered under both override name and default lowercased name. The default name is needed for self-reference resolution in the query body (`buildSelfReferencePattern` path).
+- **Marker-style booleans** — `@NoLoop` with no args, not `@NoLoop(true)`. Passing an argument is an error.
+- **`@Disabled` over `@Enabled`** — marker `@Enabled` is redundant (rules enabled by default).
+- **Empty-string rejection** — universal for all STRING-shape annotations, not just `@DataSource`.
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
 
+- **#87** — `@NoLoop`/`@LockOnActive` not enforced. DataStore `update(DataHandle, T)` doesn't propagate `InternalMatch` to `PropagationContext`. Garden entry: `GE-20260609-dab2f5`.
+- **#88** — `@AgendaGroup`/`@AutoFocus` not enforced. `SimpleAgendaGroupsManager` doesn't support groups.
+- **#89** — `@RuleFlowGroup` not enforced. Depends on #88.
 - **ListDataStore ordering** — *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Immediate next action
 
-Pick the next epic to work on. Candidates: #78 (Rule metadata & syntax sugar), #79 (Conditional branching & named windows). #80 and #81 are de-prioritized.
+Fix runtime enforcement bugs (#87, #88) or pick the next #78 sub-issue (#65 test blocks, #40 groupBy).
