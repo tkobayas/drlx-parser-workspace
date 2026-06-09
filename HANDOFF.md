@@ -2,27 +2,25 @@
 
 ## Session goals (completed)
 
-**Fixed #87 — @NoLoop/@LockOnActive runtime enforcement.** `DataStore.update()` now propagates `InternalMatch` through `DataStoreSupport.update()`, giving `PropagationContext` the terminal node origin that `PhreakRuleTerminalNode` needs. Also sets `rule.setEager(true)` for both annotations. 2 commits, all 374 tests pass, 5 `@Disabled` (agenda group bugs #88/#89).
+**Closed #88, #89 — removed @AgendaGroup, @AutoFocus, @RuleFlowGroup.** RuleUnit's `ActivationsManagerImpl` hardcodes `SimpleAgendaGroupsManager` which only supports the MAIN group. These annotations were silently set on `RuleImpl` but never enforced. This is by design — RuleUnit replaces the AgendaGroup/RuleFlowGroup concepts. 1 commit, 9 files changed (-301 lines), all 371 tests pass, 0 disabled.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `f4721e2`, clean, not pushed.
+- **drlx-parser project repo** `main` at `750505a`, clean, not pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, uncommitted (this handover).
 
 ## Key decisions
 
-- **`__match__` in MVEL context** — `InternalMatch` injected as `__match__` var in the MVEL evaluation map; `DataStoreUpdateRewriter` generates `DataStoreSupport.update(store, fact, __match__, "storeName")` calls.
-- **`@LockOnActive` works without `@AgendaGroup`** — `blockedByLockOnActive()` recency check works against the MAIN group. Drools upstream doesn't test this combination but the behavior is correct.
+- **RuleUnit doesn't support agenda groups** — `ActivationsManagerImpl` hardcodes `SimpleAgendaGroupsManager`; `StackedAgendaGroupsManager` requires `InternalWorkingMemory` (not `ReteEvaluator`); `createRuleAgendaItem()` always puts rules in MAIN. Removed all three annotations rather than fight the architecture.
+- **`@LockOnActive` works without `@AgendaGroup`** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
 
-- **#88** — `@AgendaGroup`/`@AutoFocus` not enforced. `SimpleAgendaGroupsManager` doesn't support named groups.
-- **#89** — `@RuleFlowGroup` not enforced. Depends on #88.
 - **ListDataStore ordering** — *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Immediate next action
 
-Fix #88 (agenda group support) or pick the next #78 sub-issue (#65 test blocks, #40 groupBy).
+Pick the next #78 sub-issue (#65 test blocks, #40 groupBy) or next priority from the backlog.
