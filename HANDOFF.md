@@ -2,19 +2,20 @@
 
 ## Session goals (completed)
 
-**Closed #88, #89 — removed @AgendaGroup, @AutoFocus, @RuleFlowGroup.** RuleUnit's `ActivationsManagerImpl` hardcodes `SimpleAgendaGroupsManager` which only supports the MAIN group. These annotations were silently set on `RuleImpl` but never enforced. This is by design — RuleUnit replaces the AgendaGroup/RuleFlowGroup concepts. 1 commit, 9 files changed (-301 lines), all 371 tests pass, 0 disabled.
+**Closed #85 — implemented `@Timer(String)` and `@Duration(String)` rule annotations.** `@Timer` supports `int:` and `cron:` protocols via `RuleBuilder.buildTimer()`; `@Duration` creates `DurationTimer` for CEP one-shot delayed activation. Mutual exclusion enforced at visitor level. 5 commits, 7 files changed (+332 lines), all 383 tests pass, 0 disabled.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `750505a`, clean, not pushed.
+- **drlx-parser project repo** `main` at `7857a78`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, uncommitted (this handover).
 
 ## Key decisions
 
-- **RuleUnit doesn't support agenda groups** — `ActivationsManagerImpl` hardcodes `SimpleAgendaGroupsManager`; `StackedAgendaGroupsManager` requires `InternalWorkingMemory` (not `ReteEvaluator`); `createRuleAgendaItem()` always puts rules in MAIN. Removed all three annotations rather than fight the architecture.
-- **`@LockOnActive` works without `@AgendaGroup`** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **Reuse `RuleBuilder.buildTimer()`** — lambda-based overload with null context, anonymous `TimerExpression` for start/end params. `drools-compiler` is already a transitive dependency.
+- **Pseudo clock for timer tests** — deterministic `PseudoClockScheduler` + `advanceTime()` via `KieSession` (not `DrlxRuleUnitInstance`, which lacks `addEventListener`). No Awaitility dependency needed.
+- **`expr:` protocol out of scope** — requires Declaration resolution wiring. Can be added as follow-up.
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
@@ -23,4 +24,4 @@
 
 ## Immediate next action
 
-Pick the next #78 sub-issue (#65 test blocks, #40 groupBy) or next priority from the backlog.
+Pick the next #78 sub-issue (#86 `@DateEffective`/`@DateExpires`, #65 test blocks, #40 groupBy) or next priority from the backlog.
