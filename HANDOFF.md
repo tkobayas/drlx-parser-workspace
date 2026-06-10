@@ -2,20 +2,21 @@
 
 ## Session goals (completed)
 
-**Closed #85 — implemented `@Timer(String)` and `@Duration(String)` rule annotations.** `@Timer` supports `int:` and `cron:` protocols via `RuleBuilder.buildTimer()`; `@Duration` creates `DurationTimer` for CEP one-shot delayed activation. Mutual exclusion enforced at visitor level. 5 commits, 7 files changed (+332 lines), all 383 tests pass, 0 disabled.
+**Closed #86 — implemented `@DateEffective` and `@DateExpires` rule annotations.** ISO-8601 date-only format (`yyyy-MM-dd`), parse-time validation via `LocalDate.parse()`, `Calendar` conversion for `RuleImpl` setters. Deterministic runtime tests using `PseudoClockScheduler.setStartupTime()`. 2 commits, 8 files changed (+501 lines), all 399 tests pass, 0 disabled.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `7857a78`, clean, pushed.
+- **drlx-parser project repo** `main` at `c25c27e`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, uncommitted (this handover).
 
 ## Key decisions
 
-- **Reuse `RuleBuilder.buildTimer()`** — lambda-based overload with null context, anonymous `TimerExpression` for start/end params. `drools-compiler` is already a transitive dependency.
-- **Pseudo clock for timer tests** — deterministic `PseudoClockScheduler` + `advanceTime()` via `KieSession` (not `DrlxRuleUnitInstance`, which lacks `addEventListener`). No Awaitility dependency needed.
-- **`expr:` protocol out of scope** — requires Declaration resolution wiring. Can be added as follow-up.
+- **ISO-8601 over legacy `DateUtils` format** — `yyyy-MM-dd` instead of `d-MMM-yyyy`. Locale-independent, validated by `LocalDate.parse()` natively.
+- **Date-only, no time component** — activation at start of day (midnight) in system default time zone.
+- **No mutual exclusion** — unlike `@Timer`/`@Duration`, both can coexist to form a date window.
+- **Proto file needed for new Kind entries** — plan missed `DrlxRuleAstParseResult.java` switches and proto enum; 5 files changed, not 3. Compiler caught it.
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
@@ -24,4 +25,4 @@
 
 ## Immediate next action
 
-Pick the next #78 sub-issue (#86 `@DateEffective`/`@DateExpires`, #65 test blocks, #40 groupBy) or next priority from the backlog.
+Pick the next #78 sub-issue (#65 test blocks, #40 groupBy) or next priority from the backlog.
