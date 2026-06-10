@@ -2,21 +2,21 @@
 
 ## Session goals (completed)
 
-**Closed #86 — implemented `@DateEffective` and `@DateExpires` rule annotations.** ISO-8601 date-only format (`yyyy-MM-dd`), parse-time validation via `LocalDate.parse()`, `Calendar` conversion for `RuleImpl` setters. Deterministic runtime tests using `PseudoClockScheduler.setStartupTime()`. 2 commits, 8 files changed (+501 lines), all 399 tests pass, 0 disabled.
+**Feasibility analysis and plan for #90 — convert KieSession tests to DrlxRuleUnitInstance.** Explored all 48 test files, categorized ~400 tests by session pattern, identified API gaps, and wrote implementation plan.
 
 ## Current state
 
 - **drlx-parser project repo** `main` at `c25c27e`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, uncommitted (this handover).
+- **Workspace** `main`, plan file added (uncommitted).
 
 ## Key decisions
 
-- **ISO-8601 over legacy `DateUtils` format** — `yyyy-MM-dd` instead of `d-MMM-yyyy`. Locale-independent, validated by `LocalDate.parse()` natively.
-- **Date-only, no time component** — activation at start of day (midnight) in system default time zone.
-- **No mutual exclusion** — unlike `@Timer`/`@Duration`, both can coexist to form a date window.
-- **Proto file needed for new Kind entries** — plan missed `DrlxRuleAstParseResult.java` switches and proto enum; 5 files changed, not 3. Compiler caught it.
+- **No `getEntryPoint` on DrlxRuleUnitInstance** — user rejected exposing EntryPoint. Use `DataStore.update(DataHandle, T)` instead. If tests require property-name-aware update (`ep.update(fh, obj, "prop")`), leave them unconverted.
+- **PropertyReactiveWatchListTest stays KieSession** — its 7 runtime tests require property-name-aware update that DataStore lacks. Leave as-is.
+- **EvalIRBuilderTest stays KieSession** — tests low-level IR pipeline, not the builder API.
+- **Don't change test semantics** — only convert the session layer (KieSession → DrlxRuleUnitInstance). If stuck, leave the test and report it.
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
@@ -25,4 +25,4 @@
 
 ## Immediate next action
 
-Pick the next #78 sub-issue (#65 test blocks, #40 groupBy) or next priority from the backlog.
+Implement plan at `plans/2026-06-10-90-ksession-to-ruleunitinstance.md`. Start with Step 1: add `addEventListener` to `DrlxRuleUnitInstance`.
