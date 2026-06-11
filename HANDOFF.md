@@ -1,26 +1,26 @@
 # HANDOVER
 
-## Session goals (incomplete)
+## Session goals (completed)
 
-**Picked up #65 — test block `t[...]` boolean expression.** Started brainstorming but hit a spec/grammar conflict that needs a design decision before proceeding.
+**Implemented #40 — groupBy keyword.** Full brainstorm → spec → plan → implementation cycle. Merged to main, pushed, issue auto-closed.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `03f69ea`, clean, pushed.
+- **drlx-parser project repo** `main` at `f77d66e`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **Workspace** `main`, clean.
 
 ## Key decisions
 
-- **Spec line 348 confirmed as typo** — `timestamp = new Date()` inside `[]` should be a boolean test (e.g. `timestamp != null`), not an assignment. Test blocks contain only boolean expressions.
-- **`==` → `.equals()` mapping** — will be implemented as part of #65 (spec line 153: within `[]` blocks only).
-- **Grammar conflict with list/map access** — both test blocks and list/map access use `expression '[' ... ']'`. Multi-expression (`t[a, b]`) is unambiguous (comma disambiguates), but single-expression (`t[x == y]`) clashes with array/map access syntax. This needs a design decision before implementation can proceed.
+- **`DrlxGroupByAccumulate` in drlx-parser** — not reusing `LambdaGroupByAccumulate` from drools-model-compiler to avoid the dependency. Uses MVEL3-compiled `DrlxValueExtractor` for group key computation.
+- **Result pattern always `Object[].class`** — even for single-function groupBy, because `PhreakGroupByNode.createResult()` wraps results in arrays.
+- **`MultiAccumulate` gets `n+1` slots** — extra slot for the group key at the last array position.
 
 ## Open issues
 
-- **ListDataStore ordering** — *Unchanged — `git show HEAD~2:HANDOFF.md`*
+- **ListDataStore ordering** — *Unchanged — `git show HEAD~3:HANDOFF.md`*
 
 ## Immediate next action
 
-Resume #65 brainstorming — resolve the `[]` grammar ambiguity (single-expression test block vs array access), then complete spec and plan.
+Pick next issue from epic #78 or #79. All #78 items except #40 are now complete.
