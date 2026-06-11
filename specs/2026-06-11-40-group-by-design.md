@@ -131,16 +131,19 @@ A new class `DrlxGroupByAccumulate extends Accumulate` in `org.drools.drlx.build
 All delegate to `innerAccumulate` after group key handling:
 
 - `isGroupBy()` → `true`
-- `accumulate(...)` — computes group key, calls `GroupByContext.getGroup()` to find/create the group, delegates to `innerAccumulate.accumulate()` via the 6-arg overload
-- `tryReverse(...)` — finds group from match's memory, delegates reverse, removes empty groups
-- `getResult(...)` — delegates to `innerAccumulate.getResult()`, returns null if group is empty
+- `accumulate(5-arg)` — the primary entry point called by `PhreakAccumulateNode.addMatch()`. Receives `GroupByContext` as `context`. Computes the group key, calls `GroupByContext.getGroup()` to find/create the group's `TupleListWithContext`, then calls `this.accumulate(6-arg)`.
+- `accumulate(6-arg)` — called by the 5-arg method above AND directly by `PhreakGroupByNode.reaccumulateForLeftTuple()` (re-accumulating within a known group). Moves the tuple list to the propagate list, then delegates to `innerAccumulate.accumulate(5-arg)` with the group's `AccumulateContextEntry` as context. **Note:** `SingleAccumulate` and `MultiAccumulate` both throw `UnsupportedOperationException` on their 6-arg overload — it is only implemented by the groupBy wrapper.
+- `tryReverse(...)` — finds group from match's memory (`TupleListWithContext`), delegates reverse to `innerAccumulate`, removes empty groups from `GroupByContext`
+- `getResult(...)` — delegates to `innerAccumulate.getResult()`, returns null if group is empty (via `AccumulateContextEntry.isEmpty()`)
 - `isMultiFunction()`, `supportsReverse()`, `getAccumulators()`, `createFunctionContext()`, `createWorkingMemoryContext()` — all delegate to `innerAccumulate`
-- `init(...)` — no-op (initialization happens when a group is first created)
+- `init(...)` — no-op (initialization happens lazily when `GroupByContext.getGroup()` creates a new group)
 
 ### Group key computation
 
-- **Single-source:** The grouping function receives the source fact and returns the key. Compiled by `DrlxLambdaCompiler` from the key expression, same approach as accumulate extractor expressions.
-- **Multi-source (`and(...)`):** The `DrlxValueExtractor` receives a bindings map and returns the key. Same infrastructure as multi-source accumulate extractors.
+Key computation resolves declaration values from the tuple or handle (mirroring `LambdaGroupByAccumulate.getValue()`), then applies the compiled grouping function:
+
+- **Single-source:** The fact is obtained from `handle.getObject()` (or via `declaration.getValue()` from the tuple if the declaration's tuple index is within range). The MVEL3-compiled `Function<Object, Object>` maps the fact to the key (e.g., `p -> p.getStatus()`). Compiled by `DrlxLambdaCompiler` from the key expression, same approach as accumulate extractor expressions.
+- **Multi-source (`and(...)`):** Declarations for all referenced bindings are resolved from the tuple. The `DrlxValueExtractor` receives a bindings map and returns the key. Same infrastructure as multi-source accumulate extractors.
 
 ## Runtime Builder Wiring
 
@@ -164,16 +167,21 @@ A `buildGroupByAccumulatePattern` method (for built-in functions) and `buildGrou
 4. Wraps inner accumulate in `DrlxGroupByAccumulate`
 5. Constructs result pattern as `Object[].class` with `ArrayElementReader` positions
 
+### Inner accumulate construction
+
+- **Single function:** The inner accumulate is a `SingleAccumulate` — same as non-groupBy. No array size concerns since `PhreakGroupByNode.createResult()` wraps the scalar result in `new Object[]{result, key}`.
+- **Multi function:** The inner accumulate is a `MultiAccumulate` constructed with **`n + 1` array slots** (not `n`). The extra slot is pre-allocated for the group key. `PhreakGroupByNode.createResult()` places the key at `array[array.length - 1]` in-place.
+
 ### Result pattern structure
 
-`PhreakGroupByNode.createResult()` always produces an `Object[]`:
+`PhreakGroupByNode.createResult()` always produces an `Object[]`, regardless of whether the inner accumulate is single or multi:
 
 - **Single function:** `Object[]{accResult, key}` — `ArrayElementReader(0)` for the acc result, `ArrayElementReader(1)` for the key
 - **Multi function:** `Object[]{accResult0, accResult1, ..., key}` — `ArrayElementReader(i)` for acc result `i`, `ArrayElementReader(n)` for the key
 
-The result pattern is always `Object[].class` (unlike non-groupBy single-acc which uses the function's result type). Declarations are registered to `outerScope` so they're available in the consequence.
+The result pattern is **always `Object[].class`** (unlike non-groupBy single-acc which uses the function's result type). This is because `PhreakGroupByNode.createResult()` always wraps results in an array. Declarations are registered to `outerScope` so they're available in the consequence.
 
-When the group key is bound (`var g = ...`), a Declaration is added at the last array position. When unbound, no key Declaration is created — the key is used internally for partitioning only.
+When the group key is bound (`var g = ...`), a Declaration backed by `ArrayElementReader` at the last position is added. When unbound, no key Declaration is created — the key is used internally for partitioning only.
 
 ## Testing
 
