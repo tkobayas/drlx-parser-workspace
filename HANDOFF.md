@@ -2,27 +2,24 @@
 
 ## Session goals (completed)
 
-**Implemented #92 — plain property reactivity via DataStoreSupport.** 6 commits, 7 files changed, 403 tests passing. Issue #92 closed. Created issue #92, spec, plan, and executed inline.
+**Closed #91 — converted watch list tests to DrlxRuleUnitInstance.** 1 commit, 1 file changed (50+/48-), all 403+ tests passing. Associated #91 and #92 with epic #78.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `5446b6c`, clean, pushed.
+- **drlx-parser project repo** `main` at `03f69ea`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, blog entry added (uncommitted).
+- **Workspace** `main`, clean.
 
 ## Key decisions
 
-- **No drools API change** — `DataStoreSupport` facades both external and consequence-side property-aware updates. External method is marked removable once drools `DataStore.update()` gains property-name support.
-- **CompactWithExpression property extraction** — rewriter extracts property names from `getAssignments()`. Plain setter-before-update falls back to `AllSetBitMask` (safe default).
-- **`__ruleBase__` injected** — consequence vars now include `__ruleBase__` via `valueResolver.getRuleBase()`, alongside `__match__`.
-- **`fire(int max)` for consequence tests** — prevents silent hangs from self-reactivation loops.
+- **No drools API change needed** — `DataStoreSupport.update(DataStore, DataHandle, Object, InternalRuleBase, String...)` already bridges property-name-aware updates for both external and watch list tests.
+- **`withSession` is now dead code** — no callers remain in the test suite. Left for user to decide on cleanup.
 
 ## Open issues
 
-- **#91 (watch list tests)** — unblocked by #92, ready to convert from `withSession` to `withMyUnitInstance` using `DataStoreSupport.update()`.
-- **ListDataStore ordering** — *Unchanged — `git show HEAD~5:HANDOFF.md`*
+- **ListDataStore ordering** — *Unchanged — `git show HEAD~2:HANDOFF.md`*
 
 ## Immediate next action
 
-Pick next from backlog — #91 is the natural successor.
+Pick next from backlog — epic #78 has #65 (test block) and #40 (Group By) open.
