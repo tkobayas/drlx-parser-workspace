@@ -2,20 +2,20 @@
 
 ## Session goals (completed)
 
-**Implemented #40 — groupBy keyword.** Full brainstorm → spec → plan → implementation cycle. Merged to main, pushed, issue auto-closed.
+**Brainstormed and wrote spec for #22 — Form B if/else with per-branch consequences.** Explored drools' ConditionalBranch mechanism, evaluated three compiler approaches, chose rule decomposition. Spec approved and written.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `f77d66e`, clean, pushed.
+- **drlx-parser project repo** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **Workspace** `main`, untracked spec file: `specs/2026-06-11-if-else-form-b-design.md`
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, clean.
 
 ## Key decisions
 
-- **`DrlxGroupByAccumulate` in drlx-parser** — not reusing `LambdaGroupByAccumulate` from drools-model-compiler to avoid the dependency. Uses MVEL3-compiled `DrlxValueExtractor` for group key computation.
-- **Result pattern always `Object[].class`** — even for single-function groupBy, because `PhreakGroupByNode.createResult()` wraps results in arrays.
-- **`MultiAccumulate` gets `n+1` slots** — extra slot for the group key at the last array position.
+- **Rule decomposition for Form B** — synthesize N `RuleImpl` objects (one per branch) rather than using drools' ConditionalBranch or extending drools-core. No drools changes needed. Trade-off: `no-loop` applies per synthetic rule.
+- **`do` optional in branches** — bare expression statements allowed as consequences. Grammar disambiguates via 2-token lookahead (patterns need `identifier identifier ':'`).
+- **Nested Form B inside Form B deferred** — compile error for now; recursive decomposition too complex for a rare case.
 
 ## Open issues
 
@@ -23,4 +23,4 @@
 
 ## Immediate next action
 
-Pick next issue from epic #78 or #79. All #78 items except #40 are now complete.
+Invoke `writing-plans` skill on the approved spec `specs/2026-06-11-if-else-form-b-design.md` to create the implementation plan for #22.
