@@ -2,21 +2,19 @@
 
 ## Session goals (completed)
 
-**Feasibility analysis and plan for #90 — convert KieSession tests to DrlxRuleUnitInstance.** Explored all 48 test files, categorized ~400 tests by session pattern, identified API gaps, and wrote implementation plan.
+**Implemented plan #90 — converted KieSession tests to DrlxRuleUnitInstance.** 6 commits, 25 files changed, 399 tests passing. Issue #90 closed.
 
 ## Current state
 
-- **drlx-parser project repo** `main` at `c25c27e`, clean, pushed.
+- **drlx-parser project repo** `main` at `28ec78d`, clean, pushed.
 - **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 - **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Workspace** `main`, plan file added (uncommitted).
+- **Workspace** `main`, blog entry added (uncommitted).
 
 ## Key decisions
 
-- **No `getEntryPoint` on DrlxRuleUnitInstance** — user rejected exposing EntryPoint. Use `DataStore.update(DataHandle, T)` instead. If tests require property-name-aware update (`ep.update(fh, obj, "prop")`), leave them unconverted.
-- **PropertyReactiveWatchListTest stays KieSession** — its 7 runtime tests require property-name-aware update that DataStore lacks. Leave as-is.
-- **EvalIRBuilderTest stays KieSession** — tests low-level IR pipeline, not the builder API.
-- **Don't change test semantics** — only convert the session layer (KieSession → DrlxRuleUnitInstance). If stuck, leave the test and report it.
+- **withSession kept** — PropertyReactiveWatchListTest (7 tests) still needs it; `DataStore.update(DataHandle, T)` has no property-name-aware variant.
+- **Helper naming** — `withMyUnitInstance` / `withCreditUnitInstance` to clarify which unit type each creates.
 - **Priority axis:** *Unchanged — `git show HEAD~5:HANDOFF.md`*
 
 ## Open issues
@@ -25,4 +23,4 @@
 
 ## Immediate next action
 
-Implement plan at `plans/2026-06-10-90-ksession-to-ruleunitinstance.md`. Start with Step 1: add `addEventListener` to `DrlxRuleUnitInstance`.
+Pick the next issue from the backlog — #90 is closed, no active epic.

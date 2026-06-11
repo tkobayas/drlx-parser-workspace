@@ -45,3 +45,4 @@
 | [2026-06-09-tk01-6-seven-annotations-three-surprises.md](2026-06-09-tk01-6-seven-annotations-three-surprises.md) | 2026-06-09 | #6 — seven annotations, three runtime surprises |
 | [2026-06-09-tk02-ruleunit-no-agenda-groups.md](2026-06-09-tk02-ruleunit-no-agenda-groups.md) | 2026-06-09 | RuleUnit doesn't do agenda groups — three annotations removed |
 | [2026-06-10-tk01-86-date-gates-land-quietly.md](2026-06-10-tk01-86-date-gates-land-quietly.md) | 2026-06-10 | #86 — date gates land quietly |
+| [2026-06-11-tk01-90-kiesession-out-ruleunitinstance-in.md](2026-06-11-tk01-90-kiesession-out-ruleunitinstance-in.md) | 2026-06-11 | #90 — KieSession out, DrlxRuleUnitInstance in |
