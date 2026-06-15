@@ -1,25 +1,27 @@
 # HANDOVER
 
-## Session goals (completed)
+## Session goals (in progress)
 
-**Implemented Form B if/else with per-branch consequences (#22).** Planned from approved spec, executed all 6 tasks, pushed, issue closed.
+**Designing #30 Match (switch) conditional element.** Brainstorming complete, spec written and awaiting user review. Next: user reviews spec, then transition to implementation planning (writing-plans skill).
 
 ## Current state
 
-- **drlx-parser project repo** — `main` at `671dcef`. Clean. 439 tests pass. #22 closed.
-- **Workspace** `main`, new files: `plans/2026-06-15-if-else-form-b-implementation.md`, `blog/2026-06-15-tk01-22-form-b-if-else-ships.md`
-- **javaparser-mvel** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **MVEL3** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **drlx-parser project repo** — `main` at `671dcef`. Clean. 439 tests pass.
+- **Workspace** `main`, new file: `specs/2026-06-15-30-match-switch-design.md` (uncommitted)
 
 ## Key decisions
 
-- **`expression` not `statement` for bare `branchConsequence`** — spec grammar said `statement` but DRLXXXX examples show no semicolons. Using `expression` matches the user-facing syntax.
-- **`','?` on `conditionalBranch` in `ruleItem`** — Form B's conditional branch is the last item, no trailing comma. Made optional; Form A unaffected.
+- **Form B only** — per-case consequences; no Form A shared trailing `do`
+- **`match` keyword** — new DrlxLexer token (not reusing Java `switch`)
+- **Both case body forms** — block `{ ... }` and single-expression (`do stmt` / bare expr)
+- **Eval-based type-match desugaring** — `case #Type` → `instanceof` + cast in eval strings
+- **`default` only** — no `else` as catch-all
+- **Dedicated `buildMatchBranch`** — parallel to `buildConditionalBranchFormB`, not desugaring to if/else parse nodes
 
 ## Open issues
 
-- **ListDataStore ordering** — *Unchanged — `git show HEAD~3:HANDOFF.md`*
+- **ListDataStore ordering** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
 
 ## Immediate next action
 
-Check open issues on the drlx-parser repo for the next piece of work.
+User reviews `specs/2026-06-15-30-match-switch-design.md`, then invoke `writing-plans` skill to create the implementation plan for #30.
