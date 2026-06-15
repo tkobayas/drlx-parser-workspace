@@ -47,3 +47,4 @@
 | [2026-06-10-tk01-86-date-gates-land-quietly.md](2026-06-10-tk01-86-date-gates-land-quietly.md) | 2026-06-10 | #86 — date gates land quietly |
 | [2026-06-11-tk01-90-kiesession-out-ruleunitinstance-in.md](2026-06-11-tk01-90-kiesession-out-ruleunitinstance-in.md) | 2026-06-11 | #90 — KieSession out, DrlxRuleUnitInstance in |
 | [2026-06-11-tk02-92-property-reactivity-without-touching-drools.md](2026-06-11-tk02-92-property-reactivity-without-touching-drools.md) | 2026-06-11 | #92 — Property reactivity without touching drools |
+| [2026-06-15-tk01-22-form-b-if-else-ships.md](2026-06-15-tk01-22-form-b-if-else-ships.md) | 2026-06-15 | #22 — Form B if/else ships: one rule in, N rules out |
