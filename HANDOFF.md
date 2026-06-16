@@ -2,18 +2,17 @@
 
 ## Session goals (completed)
 
-**Implemented #30 Match (switch) conditional element.** Spec from previous session executed. Grammar, visitor, and tests all shipped. Issue closed.
+**Verified and closed #69 (Windows with accumulate).** Confirmed the existing pipeline already supports combining CEP sliding windows with accumulate patterns — zero production code changes. Added 12 tests (8 visitor-level, 4 session-level). Issue closed.
 
 ## Current state
 
-- **drlx-parser project repo** — `main` at `2b7eb46`. Clean. 461 tests pass.
-- **Workspace** `main`, new files: blog entry, implementation plan (uncommitted)
+- **drlx-parser project repo** — `main` at `a3af246`. Clean. 473 tests pass.
+- **Workspace** `main`, new files: blog entry, spec, plan (uncommitted)
 
 ## Key decisions
 
 - *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Nested match rejected** — match inside if/else branch bodies throws a clear error (same pattern as nested Form B if/else)
-- **`combineConsequences` extracted** — shared helper for consequence text merging; existing `buildConditionalBranchFormB` left unchanged (surgical changes)
+- **Propagation delay excluded** — `delay.last(4s)` is separate issue #71, de-prioritised
 
 ## Open issues
 
@@ -21,4 +20,4 @@
 
 ## Immediate next action
 
-Pick next issue from epic #79 (conditional branching & named windows), or check the issue tracker for priorities.
+Pick next issue from epic #79: #72 (named windows, spec marked TODO) or check the issue tracker for other priorities.

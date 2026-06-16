@@ -49,3 +49,4 @@
 | [2026-06-11-tk02-92-property-reactivity-without-touching-drools.md](2026-06-11-tk02-92-property-reactivity-without-touching-drools.md) | 2026-06-11 | #92 — Property reactivity without touching drools |
 | [2026-06-15-tk01-22-form-b-if-else-ships.md](2026-06-15-tk01-22-form-b-if-else-ships.md) | 2026-06-15 | #22 — Form B if/else ships: one rule in, N rules out |
 | [2026-06-16-tk01-30-match-switch-branching.md](2026-06-16-tk01-30-match-switch-branching.md) | 2026-06-16 | #30 — match lands: switch-style branching via eval desugaring |
+| [2026-06-16-tk02-69-window-accumulate-tests.md](2026-06-16-tk02-69-window-accumulate-tests.md) | 2026-06-16 | #69 — window + accumulate: twelve tests, zero production changes |
