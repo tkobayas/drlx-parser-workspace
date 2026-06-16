@@ -2,17 +2,18 @@
 
 ## Session goals (completed)
 
-**Verified and closed #69 (Windows with accumulate).** Confirmed the existing pipeline already supports combining CEP sliding windows with accumulate patterns — zero production code changes. Added 12 tests (8 visitor-level, 4 session-level). Issue closed.
+**Implemented #72 (Named windows) and closed epic #79.** Full pipeline: grammar (`WINDOW` keyword + `windowDeclaration` rule), IR (`WindowDeclarationIR`), visitor, runtime builder (declaration compilation + reference detection via `WindowReference`), protobuf serialization. 485 tests pass.
 
 ## Current state
 
-- **drlx-parser project repo** — `main` at `a3af246`. Clean. 473 tests pass.
+- **drlx-parser project repo** — `main` at `a418bb6`. Clean. 485 tests pass.
 - **Workspace** `main`, new files: blog entry, spec, plan (uncommitted)
 
 ## Key decisions
 
 - *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Propagation delay excluded** — `delay.last(4s)` is separate issue #71, de-prioritised
+- **Named window naming convention** — declaration PascalCase (`WithdrawalWindow`), reference camelCase (`/withdrawalWindow`) — same as queries
+- **No new drools APIs** — maps to existing `WindowDeclaration` / `WindowReference`
 
 ## Open issues
 
@@ -20,4 +21,4 @@
 
 ## Immediate next action
 
-Pick next issue from epic #79: #72 (named windows, spec marked TODO) or check the issue tracker for other priorities.
+Epic #79 is closed. Check the issue tracker for the next priority — epics #80 (runtime-dependent) and #81 (experimental) are de-prioritized. May be time for a new epic or standalone issues.

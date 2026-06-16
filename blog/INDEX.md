@@ -50,3 +50,4 @@
 | [2026-06-15-tk01-22-form-b-if-else-ships.md](2026-06-15-tk01-22-form-b-if-else-ships.md) | 2026-06-15 | #22 — Form B if/else ships: one rule in, N rules out |
 | [2026-06-16-tk01-30-match-switch-branching.md](2026-06-16-tk01-30-match-switch-branching.md) | 2026-06-16 | #30 — match lands: switch-style branching via eval desugaring |
 | [2026-06-16-tk02-69-window-accumulate-tests.md](2026-06-16-tk02-69-window-accumulate-tests.md) | 2026-06-16 | #69 — window + accumulate: twelve tests, zero production changes |
+| [2026-06-16-tk03-72-named-windows-close-epic-79.md](2026-06-16-tk03-72-named-windows-close-epic-79.md) | 2026-06-16 | #72 — named windows close out epic #79 |
