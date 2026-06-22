@@ -2,23 +2,21 @@
 
 ## Session goals (completed)
 
-**Implemented #72 (Named windows) and closed epic #79.** Full pipeline: grammar (`WINDOW` keyword + `windowDeclaration` rule), IR (`WindowDeclarationIR`), visitor, runtime builder (declaration compilation + reference detection via `WindowReference`), protobuf serialization. 485 tests pass.
+**Reviewed DRLXXXX.md syntax spec for ambiguities and error-prone constructs.** Identified 12 issues across operator overloading (`[]`, `{}`, `#`, `var`), subtle semantic distinctions (`do` vs bare, `=` vs `==`), and fragile positional APIs (`acc()` parameter count). Wrote analysis to `Syntax_Review.md`.
 
 ## Current state
 
 - **drlx-parser project repo** — `main` at `a418bb6`. Clean. 485 tests pass.
-- **Workspace** `main`, new files: blog entry, spec, plan (uncommitted)
+- **Workspace** `main`, new file: `Syntax_Review.md` (untracked)
 
 ## Key decisions
 
 - *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **Named window naming convention** — declaration PascalCase (`WithdrawalWindow`), reference camelCase (`/withdrawalWindow`) — same as queries
-- **No new drools APIs** — maps to existing `WindowDeclaration` / `WindowReference`
 
 ## Open issues
 
-- **ListDataStore ordering** — *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- *Unchanged — `git show HEAD~1:HANDOFF.md`*
 
 ## Immediate next action
 
-Epic #79 is closed. Check the issue tracker for the next priority — epics #80 (runtime-dependent) and #81 (experimental) are de-prioritized. May be time for a new epic or standalone issues.
+Discuss which of the 12 syntax issues in `Syntax_Review.md` warrant spec changes vs accepting as-is. Top 3 risks: `=` vs `==` in constraints, `do` vs bare statement semantics, `acc()` positional parameter fragility.
