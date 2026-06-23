@@ -1,22 +1,24 @@
 # HANDOVER
 
-## Session goals (completed)
+## Session goals (in progress)
 
-**Reviewed DRLXXXX.md syntax spec for ambiguities and error-prone constructs.** Identified 12 issues across operator overloading (`[]`, `{}`, `#`, `var`), subtle semantic distinctions (`do` vs bare, `=` vs `==`), and fragile positional APIs (`acc()` parameter count). Wrote analysis to `Syntax_Review.md`.
+**Reviewed DRLXXXX syntax spec, created issue #94, began implementation.** Identified 12 syntax ambiguities in `Syntax_Review.md` (2 resolved after discussion). Narrowed focus to `=` vs `==` in constraints — the parser accepts assignment inside `[]` blocks, and downstream `KieMemoryCompilerException` says "incompatible types" without hinting at the likely `=`/`==` typo. Spec and plan written. Implementation partially applied but interrupted mid-step.
 
 ## Current state
 
-- **drlx-parser project repo** — `main` at `a418bb6`. Clean. 485 tests pass.
-- **Workspace** `main`, new file: `Syntax_Review.md` (untracked)
+- **drlx-parser project repo** — `main`, uncommitted: import added to `DrlxLambdaCompiler.java` (the `compileBatch()` try/catch not yet re-applied after linter revert), new `ConstraintAssignmentHintTest.java`
+- **Workspace** `main`, uncommitted: updated `Syntax_Review.md`, new `plans/2026-06-23-assignment-hint-in-constraints.md`
 
 ## Key decisions
 
-- *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **Approach:** enhance error message at `DrlxLambdaCompiler.compileBatch()` rather than visitor-level validation or grammar change
+- **Scope:** catch `KieMemoryCompilerException`, check for "incompatible types" + "boolean" (case-insensitive), append hint
+- **Case sensitivity gotcha:** error message contains `java.lang.Boolean` (capital B), must use `toLowerCase().contains("boolean")`
 
 ## Open issues
 
-- *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **#94** — assignment hint in constraints (in progress)
 
 ## Immediate next action
 
-Discuss which of the 12 syntax issues in `Syntax_Review.md` warrant spec changes vs accepting as-is. Top 3 risks: `=` vs `==` in constraints, `do` vs bare statement semantics, `acc()` positional parameter fragility.
+Re-apply the `compileBatch()` try/catch in `DrlxLambdaCompiler.java` (linter reverted it — only the import survived). The exact code is in `plans/2026-06-23-assignment-hint-in-constraints.md` Step 3. Then run full test suite, commit. Refs #94.

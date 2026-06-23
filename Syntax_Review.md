@@ -5,29 +5,17 @@ Source: `drlx-parser/docs/DRLXXXX.md`
 
 ---
 
-## 1. `[]` is heavily overloaded — 5 distinct meanings
+## ~~1. `[]` is heavily overloaded — 5 distinct meanings~~ (resolved)
 
-`[]` is used for:
-
-- **Constraints**: `/persons[age > 18]`
-- **Property-reactive watch list**: `/location[][city]`
-- **List/array access**: `cheeseList[0]`
-- **Boolean test block** ('with' style): `t[status == RECEIVED]`
-- **Window parameters**: `length[5]`, `time[5s]`
-
-The critical ambiguity is between constraints and property-reactive. Given `/location[city]` — is this a constraint (testing that `city` is truthy) or a property watch? The spec distinguishes them by position (`[][]` — first is constraint, second is watch), but a single `[city]` is ambiguous to the reader and potentially to the parser.
+`[]` is used for constraints, property-reactive watch, list/array access, boolean test blocks, and window parameters. However, the spec's positional rule resolves the main concern: the first `[]` is always constraints, the second is always property-reactive (`/location[][city]`). So `/location[city]` is unambiguously a constraint. The other uses occur in distinct syntactic contexts (expressions, not `/path` patterns), so the parser can disambiguate them.
 
 ---
 
 ## 2. `=` vs `==` inside `[]` constraint blocks
 
-The spec states: *"Within [] blocks, and [] blocks only, == is mapped to 'equals'"*. But many examples use `=` inside `[]` where `==` was clearly intended:
+The spec typos (`=` where `==` was intended) have been corrected. However, the parser currently accepts `=` (assignment) inside `[]` constraint blocks. The `drlxExpression` rule falls through to the general `expression` rule (Mvel3Parser.g4 line 138), which includes `=` as an assignment operator. No semantic validation rejects it.
 
-- `var p : /persons[locationId = l.id]`
-- `Person p : /persons[locationId = l.id, var a : age]`
-- `type = r.productType`
-
-If `=` is assignment and `==` is equality inside `[]`, then `[locationId = l.id]` would be an assignment, not a constraint — likely a spec typo, but it's exactly the kind of confusion users will have. A single `=` vs `==` typo silently changes semantics from "test equality" to "assign value."
+This means `/persons[locationId = l.id]` silently parses as an assignment rather than failing or being treated as a constraint. The spec says `[]` blocks are for boolean tests, so the parser should arguably reject `=` inside `[]` — or at minimum warn. A single-character typo (`=` vs `==`) silently changes semantics.
 
 ---
 
