@@ -1,24 +1,28 @@
 # HANDOVER
 
-## Session goals (in progress)
+## Session goals (completed)
 
-**Reviewed DRLXXXX syntax spec, created issue #94, began implementation.** Identified 12 syntax ambiguities in `Syntax_Review.md` (2 resolved after discussion). Narrowed focus to `=` vs `==` in constraints — the parser accepts assignment inside `[]` blocks, and downstream `KieMemoryCompilerException` says "incompatible types" without hinting at the likely `=`/`==` typo. Spec and plan written. Implementation partially applied but interrupted mid-step.
+**Completed DRLXXXX syntax review with the document author.** Resolved 8 of 13 items in `Syntax_Review.md` through discussion — most "ambiguities" turned out to be distinct grammar contexts. Created 5 new GitHub issues (95, 99-102) for overlooked features. Organized issues into epics 80/81/96/98. Consolidated open items into issue 97.
 
 ## Current state
 
-- **drlx-parser project repo** — `main`, uncommitted: import added to `DrlxLambdaCompiler.java` (the `compileBatch()` try/catch not yet re-applied after linter revert), new `ConstraintAssignmentHintTest.java`
-- **Workspace** `main`, uncommitted: updated `Syntax_Review.md`, new `plans/2026-06-23-assignment-hint-in-constraints.md`
+- **drlx-parser project repo** — `main`, uncommitted: partial #94 work (import in `DrlxLambdaCompiler.java`, `ConstraintAssignmentHintTest.java`). #94 suspended.
+- **Workspace** `main`, uncommitted: updated `Syntax_Review.md`
 
 ## Key decisions
 
-- **Approach:** enhance error message at `DrlxLambdaCompiler.compileBatch()` rather than visitor-level validation or grammar change
-- **Scope:** catch `KieMemoryCompilerException`, check for "incompatible types" + "boolean" (case-insensitive), append hint
-- **Case sensitivity gotcha:** error message contains `java.lang.Boolean` (capital B), must use `toLowerCase().contains("boolean")`
+- **#94 suspended** — assignment hint not critical; downstream compilation already catches the error
+- **`out` keyword** recommended for query out-parameters instead of overloading `var`
+- **Always-comma** — vote for consistent comma separation; trailing `,` after `if`/`match` is correct
+- **`acc()` inline custom** — option to drop entirely (DRL already discourages it) or use named sections
 
 ## Open issues
 
-- **#94** — assignment hint in constraints (in progress)
+- **#97** — DRLXXXX syntax review open items (SR-4, SR-5, SR-6, SR-7, SR-13)
+- **#94** — assignment hint (suspended)
+- **#95** — from-expression syntax (epic #96)
+- **#99-102** — overlooked features (epics #80, #81, #98)
 
 ## Immediate next action
 
-Re-apply the `compileBatch()` try/catch in `DrlxLambdaCompiler.java` (linter reverted it — only the import survived). The exact code is in `plans/2026-06-23-assignment-hint-in-constraints.md` Step 3. Then run full test suite, commit. Refs #94.
+Items pending author clarification: SR-4 (`do` examples without `do` keyword), SR-6 (missing/extra commas at lines 596, 603, 736). Check issue #97 for full list.
