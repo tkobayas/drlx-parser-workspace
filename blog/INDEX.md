@@ -51,3 +51,4 @@
 | [2026-06-16-tk01-30-match-switch-branching.md](2026-06-16-tk01-30-match-switch-branching.md) | 2026-06-16 | #30 — match lands: switch-style branching via eval desugaring |
 | [2026-06-16-tk02-69-window-accumulate-tests.md](2026-06-16-tk02-69-window-accumulate-tests.md) | 2026-06-16 | #69 — window + accumulate: twelve tests, zero production changes |
 | [2026-06-16-tk03-72-named-windows-close-epic-79.md](2026-06-16-tk03-72-named-windows-close-epic-79.md) | 2026-06-16 | #72 — named windows close out epic #79 |
+| [2026-08-05-tk01-103-multi-segment-oopath.md](2026-08-05-tk01-103-multi-segment-oopath.md) | 2026-08-05 | #103 — multi-segment OOPath end-to-end |
