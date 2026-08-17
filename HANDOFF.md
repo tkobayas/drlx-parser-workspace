@@ -2,21 +2,25 @@
 
 ## Session goals (completed)
 
-**Found Mark's `fn`/`ifn` pattern in droolsvol2.** Mark confirmed he changed `do` to `fn` in his DSLs because `do` is a Java reserved word. In `droolsvol2/RuleBuilder.java`, he uses two methods: `fn()` (deferred/agenda, wraps in `DeferredHead`) and `ifn()` (immediate/propagation, wraps in `ImmediateHead`). Both execution modes get explicit keywords.
+**Implemented multi-segment OOPath support (#103).** Grammar and parser already handled `/persons/addresses[city == "London"]` — the gap was in `DrlxToRuleAstVisitor` (discarded intermediate segments) and `DrlxRuleAstRuntimeBuilder` (no `From` chaining). Added `OopathSegmentIR` to the IR, protobuf serialization, `OopathFieldDataProvider`, and `buildPatternChain`. Also confirmed drools-ruleunits runtime handles multi-segment by adding `OOPathMultilevelTest` in `drools-ruleunits-impl`.
 
 ## Current state
 
-- *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **Branch `103-multi-segment-oopath`** on project repo — 5 commits, pushed, full test suite green.
+- **drools repo** has uncommitted test files in `drools-ruleunits-impl` (`OOPathMultilevelTest`, `OOPathMultilevelTestUnit`, `PersonWithAddresses`, `Address` domain classes). These confirm the runtime works but haven't been committed to drools.
+- **Issue #103** — `Closes #103` in the last commit message.
 
 ## Key decisions
 
 - *Unchanged — `git show HEAD~1:HANDOFF.md`*
-- **`do` → `fn`/`ifn`** — Mark's droolsvol2 branch uses `fn` for deferred (agenda) and `ifn` for immediate (propagation). This resolves SR-4: both modes get explicit keywords, no bare-vs-keyword ambiguity, no Java reserved word collision.
+- **Approach A chosen** for multi-segment: expand `PatternIR` with `List<OopathSegmentIR>` rather than emitting multiple `PatternIR` entries or string-encoding. See `specs/2026-08-05-103-multi-segment-oopath-design.md`.
+- **Plain `From`, not reactive** — `OopathFieldDataProvider.isReactive()` returns false. Reactivity for intermediate segments is out of scope.
 
 ## Open issues
 
-- *Unchanged — `git show HEAD~1:HANDOFF.md`*
+- Multi-segment inside `not`/`exists`/`accumulate` — untested, may or may not work naturally.
+- Reactivity for intermediate OOPath segments (reactive `From`).
 
 ## Immediate next action
 
-Update SR-4 in `Syntax_Review.md` and issue #97 with Mark's `fn`/`ifn` clarification. Reference: `droolsvol2/src/main/permuplate/org/drools/core/RuleBuilder.java` lines 467-489, `Agenda.java`.
+Merge branch `103-multi-segment-oopath` to `main` (or open PR). Decide whether to commit the drools-ruleunits test files to drools.
